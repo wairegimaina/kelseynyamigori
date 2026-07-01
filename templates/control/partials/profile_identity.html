@@ -1,0 +1,31 @@
+<div class="profile-section">
+  <p class="profile-section-title">Identity</p>
+
+  <div class="fg-grid">
+    <div class="fg">
+      <label for="display_name">Display Name</label>
+      <input type="text" id="display_name" name="display_name"
+             value="{{ profile.display_name }}" placeholder="e.g. KESLEY">
+    </div>
+    <div class="fg">
+      <label for="tagline">Tagline</label>
+      <input type="text" id="tagline" name="tagline"
+             value="{{ profile.tagline }}"
+             placeholder="e.g. Creator &amp; Influencer / Media Kit 2026">
+    </div>
+  </div>
+
+  <div class="fg-grid">
+    <div class="fg">
+      <label for="based_in">Based In</label>
+      <input type="text" id="based_in" name="based_in"
+             value="{{ profile.based_in }}" placeholder="e.g. Nairobi, Kenya">
+    </div>
+    <div class="fg">
+      <label for="content_types">Content Types</label>
+      <input type="text" id="content_types" name="content_types"
+             value="{{ profile.content_types }}"
+             placeholder="e.g. Dance · Lifestyle · Lip Sync">
+    </div>
+  </div>
+</div>

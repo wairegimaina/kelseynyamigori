@@ -1,0 +1,73 @@
+{% extends 'control/base.html' %}
+{% block title %}Brands - Control Panel{% endblock %}
+{% block page_title %}Brands{% endblock %}
+
+{% block content %}
+    {% if messages %}
+    <ul class="messages">
+      {% for msg in messages %}
+      <li class="{{ msg.tags }}">{{ msg }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% include 'control/partials/brands_form.html' %}
+
+    <div class="rate-table rate-table--brands" style="margin-top: 32px;">
+      <div class="rate-row rate-row--head rate-row--brand">
+        <div class="rate-cell">Logo</div>
+        <div class="rate-cell">Name</div>
+        <div class="rate-cell">Category</div>
+        <div class="rate-cell">URL</div>
+        <div class="rate-cell">Rotation</div>
+        <div class="rate-cell">Order</div>
+        <div class="rate-cell actions"></div>
+      </div>
+
+      {% for brand in brands %}
+      <div class="rate-row rate-row--brand" id="brand-row-{{ brand.pk }}">
+        <div class="rate-cell" data-label="Logo">
+          {% if brand.logo %}
+          <img src="{{ brand.logo.url }}" alt="{{ brand.name }}" class="brand-logo-thumb">
+          {% else %}
+          <span class="cell-empty">—</span>
+          {% endif %}
+        </div>
+        <div class="rate-cell" data-label="Name">{{ brand.name }}</div>
+        <div class="rate-cell" data-label="Category">{{ brand.category|default:"—" }}</div>
+        <div class="rate-cell" data-label="URL">
+          {% if brand.url %}<a href="{{ brand.url }}" target="_blank" rel="noopener">{{ brand.url }}</a>{% else %}<span class="cell-empty">—</span>{% endif %}
+        </div>
+        <div class="rate-cell" data-label="Rotation">{{ brand.rotation }}</div>
+        <div class="rate-cell" data-label="Order">{{ brand.order }}</div>
+        <div class="rate-cell actions">
+          <button class="btn-edit" onclick="toggleEdit('brand', {{ brand.pk }})">Edit</button>
+          <form method="post" action="{% url 'control:brand_delete' brand.pk %}" style="margin:0;" onsubmit="return confirm('Delete this brand?')">
+            {% csrf_token %}
+            <button type="submit" class="btn-del">Delete</button>
+          </form>
+        </div>
+      </div>
+      <div class="edit-row edit-row--brand" id="brand-edit-{{ brand.pk }}">
+        <form method="post" enctype="multipart/form-data" action="{% url 'control:brand_edit' brand.pk %}" class="edit-row--brand-form">
+          {% csrf_token %}
+          <div class="edit-cell" data-label="Logo">
+            {% if brand.logo %}<img src="{{ brand.logo.url }}" alt="" class="brand-logo-thumb">{% endif %}
+            <input type="file" name="logo" accept="image/*">
+          </div>
+          <div class="edit-cell" data-label="Name"><input type="text" name="name" value="{{ brand.name }}" required></div>
+          <div class="edit-cell" data-label="Category"><input type="text" name="category" value="{{ brand.category }}"></div>
+          <div class="edit-cell" data-label="URL"><input type="url" name="url" value="{{ brand.url }}"></div>
+          <div class="edit-cell" data-label="Rotation"><input type="number" name="rotation" value="{{ brand.rotation }}" step="0.1" min="-3" max="3"></div>
+          <div class="edit-cell" data-label="Order"><input type="number" name="order" value="{{ brand.order }}" min="0"></div>
+          <div class="edit-cell edit-cell--actions">
+            <button type="submit" class="btn-save">Save</button>
+            <button type="button" class="btn-cancel" onclick="toggleEdit('brand', {{ brand.pk }})">Cancel</button>
+          </div>
+        </form>
+      </div>
+      {% empty %}
+      <div class="empty-note">No brands yet — add one above.</div>
+      {% endfor %}
+    </div>
+{% endblock %}

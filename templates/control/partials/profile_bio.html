@@ -1,0 +1,24 @@
+<div class="profile-section">
+  <p class="profile-section-title">Bio</p>
+
+  <div class="fg">
+    <label for="bio_lead">Lead sentence <span style="font-weight:400;text-transform:none;">(shown in hero &amp; about section)</span></label>
+    <input type="text" id="bio_lead" name="bio_lead"
+           value="{{ profile.bio_lead }}"
+           placeholder="One punchy sentence that sums you up">
+  </div>
+
+  <div class="fg">
+    <label for="bio_body">Bio body</label>
+    <textarea id="bio_body" name="bio_body" rows="6"
+              placeholder="Write each paragraph on its own line. Blank lines are ignored.">{{ profile.bio_body }}</textarea>
+    <p class="hint">Each line becomes a separate paragraph on the public site.</p>
+  </div>
+
+  <div class="fg">
+    <label for="portrait_caption">Portrait caption <span style="font-weight:400;text-transform:none;">(small text below the about photo)</span></label>
+    <input type="text" id="portrait_caption" name="portrait_caption"
+           value="{{ profile.portrait_caption }}"
+           placeholder="e.g. Nairobi, 2025">
+  </div>
+</div>

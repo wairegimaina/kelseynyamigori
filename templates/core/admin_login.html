@@ -1,0 +1,33 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Login - Kesley</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/admin-login.css' %}">
+</head>
+<body class="admin-login">
+  <div class="login-card">
+    <div class="admin-logo">KESLEY<span>.</span></div>
+    <h1>Admin Access</h1>
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-row">
+        <label for="{{ form.username.id_for_label }}">Username</label>
+        {{ form.username }}
+      </div>
+      <div class="form-row">
+        <label for="{{ form.password.id_for_label }}">Password</label>
+        {{ form.password }}
+      </div>
+      {% if form.errors %}<div class="error-msg">Invalid credentials. Please try again.</div>{% endif %}
+      <button type="submit" class="login-btn">Sign In →</button>
+    </form>
+    <p class="note">Access the control panel to manage content</p>
+  </div>
+</body>
+</html>

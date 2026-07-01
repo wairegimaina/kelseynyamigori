@@ -1,0 +1,10 @@
+<div class="add-card">
+  <form method="post" enctype="multipart/form-data" action="{% url 'control:images_list' %}">
+    {% csrf_token %}
+    <div class="form-row">
+      <input type="file" name="image" accept="image/*" required>
+      <input type="text" name="alt_text" placeholder="Caption / alt text">
+    </div>
+    <button type="submit" class="btn-add">+ Upload Image</button>
+  </form>
+</div>

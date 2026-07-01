@@ -1,0 +1,134 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Control Panel - Kesley{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<link rel="stylesheet" href="{% static 'css/control.css' %}">
+{% block extra_css %}{% endblock %}
+</head>
+<body class="control-app">
+
+  <div class="shell">
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <span>KESLEY<span class="dot">.</span></span>
+        <button class="sidebar-close" id="sidebarClose" aria-label="Close menu">✕</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="{% url 'control:dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+          </span>
+          <span>Dashboard</span>
+        </a>
+        <a href="{% url 'control:profile_edit' %}" class="nav-link {% if request.resolver_match.url_name == 'profile_edit' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+          </span>
+          <span>Profile</span>
+        </a>
+        <a href="{% url 'control:images_list' %}" class="nav-link {% if request.resolver_match.url_name == 'images_list' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 15l-5.5-5.5L9 16"/></svg>
+          </span>
+          <span>Images</span>
+        </a>
+        <a href="{% url 'control:brands_list' %}" class="nav-link {% if request.resolver_match.url_name == 'brands_list' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 12 4.83A2 2 0 0 0 10.59 4.24L4 4v6.59a2 2 0 0 0 .59 1.41l8.58 8.58a2 2 0 0 0 2.83 0l5-5a2 2 0 0 0 0-2.83z"/><circle cx="8.5" cy="8.5" r="1.2"/></svg>
+          </span>
+          <span>Brands</span>
+        </a>
+        <a href="{% url 'control:work_categories' %}" class="nav-link {% if request.resolver_match.url_name == 'work_categories' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          </span>
+          <span>Work</span>
+        </a>
+        <a href="{% url 'control:social_handles' %}" class="nav-link {% if request.resolver_match.url_name == 'social_handles' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
+          </span>
+          <span>Social</span>
+        </a>
+        <a href="{% url 'control:rates_list' %}" class="nav-link {% if request.resolver_match.url_name == 'rates_list' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </span>
+          <span>Rates</span>
+        </a>
+        <a href="{% url 'control:campaigns_list' %}" class="nav-link {% if request.resolver_match.url_name == 'campaigns_list' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 8h3m-3 4h10M14 8h3"/></svg>
+          </span>
+          <span>Campaigns</span>
+        </a>
+        <a href="{% url 'control:contacts_list' %}" class="nav-link {% if request.resolver_match.url_name == 'contacts_list' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v13H7l-3 3z"/></svg>
+          </span>
+          <span>Contacts</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="{% url 'control:logout' %}" class="nav-link nav-link--logout">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </span>
+          <span>Logout</span>
+        </a>
+      </div>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 class="topbar-title">{% block page_title %}Dashboard{% endblock %}</h1>
+        <div class="topbar-spacer"></div>
+        <a href="/" target="_blank" class="topbar-link" rel="noopener">View site ↗</a>
+      </header>
+
+      <main class="content-area">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+
+  </div>
+
+<script src="{% static 'js/control.js' %}"></script>
+<script>
+  (function () {
+    var sidebar = document.getElementById('sidebar');
+    var overlay = document.getElementById('sidebarOverlay');
+    var openBtn = document.getElementById('menuToggle');
+    var closeBtn = document.getElementById('sidebarClose');
+
+    function openSidebar() {
+      sidebar.classList.add('open');
+      overlay.classList.add('show');
+    }
+    function closeSidebar() {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('show');
+    }
+    if (openBtn) openBtn.addEventListener('click', openSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+    if (overlay) overlay.addEventListener('click', closeSidebar);
+  })();
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

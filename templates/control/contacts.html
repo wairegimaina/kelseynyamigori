@@ -1,0 +1,77 @@
+{% extends 'control/base.html' %}
+{% block title %}Contacts - Control Panel{% endblock %}
+{% block page_title %}Contact Submissions{% endblock %}
+
+{% block content %}
+    {% if messages %}
+    <div class="messages">
+      {% for m in messages %}
+      <div class="msg {% if m.tags == 'error' %}msg-error{% else %}msg-success{% endif %}">{{ m }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="page-header">
+      <div class="filter-row">
+        <a href="{% url 'control:contacts_list' %}" class="filter-btn {% if not request.GET.status %}active{% endif %}">All</a>
+        <a href="?status=new"         class="filter-btn {% if request.GET.status == 'new' %}active{% endif %}">New</a>
+        <a href="?status=contacted"   class="filter-btn {% if request.GET.status == 'contacted' %}active{% endif %}">Contacted</a>
+        <a href="?status=negotiating" class="filter-btn {% if request.GET.status == 'negotiating' %}active{% endif %}">Negotiating</a>
+        <a href="?status=closed"      class="filter-btn {% if request.GET.status == 'closed' %}active{% endif %}">Closed</a>
+        <a href="?status=rejected"    class="filter-btn {% if request.GET.status == 'rejected' %}active{% endif %}">Rejected</a>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+    <table class="contact-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Brand</th>
+          <th>Type</th>
+          <th>Budget</th>
+          <th>Status</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in contacts %}
+        <tr id="row-{{ c.pk }}">
+          <td>
+            <button class="expand-btn" onclick="toggleDetail({{ c.pk }})">▶</button>
+          </td>
+          <td>{{ c.name }}{% if not c.read %} <span style="color:#e74c3c;font-size:.7rem;">●</span>{% endif %}</td>
+          <td><a href="mailto:{{ c.email }}">{{ c.email }}</a></td>
+          <td>{{ c.brand|default:"—" }}</td>
+          <td>{{ c.collab_type }}</td>
+          <td>{{ c.budget|default:"—" }}</td>
+          <td><span class="badge badge-{{ c.status }}">{{ c.get_status_display }}</span></td>
+          <td style="white-space:nowrap;">{{ c.submitted_at|date:"d M Y" }}</td>
+          <td>
+            <div class="btn-row">
+              <form method="post" action="{% url 'control:contact_delete' c.pk %}" onsubmit="return confirm('Delete this submission?');" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-sm btn-danger">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        <tr class="detail-row" id="detail-{{ c.pk }}" style="display:none;">
+          <td colspan="9">
+            <div class="detail-box">
+              <p><span class="detail-label">Message:</span> {{ c.message|linebreaksbr }}</p>
+              <p><span class="detail-label">Read:</span> {% if c.read %}Yes{% else %}No{% endif %}</p>
+              <p><span class="detail-label">Submitted:</span> {{ c.submitted_at|date:"d M Y, H:i" }}</p>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9" style="text-align:center;padding:24px;color:#999;">No submissions yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+{% endblock %}

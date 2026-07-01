@@ -1,0 +1,723 @@
+{% extends 'control/base.html' %}
+{% block title %}Work - Control Panel{% endblock %}
+{% block page_title %}Work &amp; Videos{% endblock %}
+
+{% block content %}
+
+{# ══ Upload overlay — shown whenever a multipart form is submitted ══ #}
+<div id="upload-overlay" style="
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,0.65);backdrop-filter:blur(3px);
+  flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+  <div style="
+    background:#fff;border-radius:12px;padding:32px 40px;
+    text-align:center;max-width:320px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+    <div style="font-size:32px;margin-bottom:12px;">⏳</div>
+    <p style="font-family:var(--font-mono);font-size:13px;font-weight:600;
+              color:var(--ink);margin:0 0 6px;">Uploading…</p>
+    <p style="font-family:var(--font-mono);font-size:11px;color:var(--gray-1);margin:0;">
+      Please wait — do not close this tab
+    </p>
+    <div style="margin-top:16px;height:4px;background:#f0f0f0;border-radius:2px;overflow:hidden;">
+      <div id="upload-bar" style="
+        height:100%;width:0%;background:var(--ink);border-radius:2px;
+        transition:width 0.3s ease;animation:uploadPulse 1.5s ease-in-out infinite;">
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+@keyframes uploadPulse {
+  0%   { opacity:1; }
+  50%  { opacity:0.5; }
+  100% { opacity:1; }
+}
+</style>
+
+<p class="page-subtitle">Max 4 categories · Max 3 videos per category · Order controls front-end display sequence</p>
+
+{% if messages %}
+  {% for message in messages %}
+  <div class="flash {{ message.tags }}">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+{% if categories|length < 4 %}
+<div class="card">
+  <p class="card-title">Add New Category</p>
+  <form method="post" action="{% url 'control:work_add_category' %}">
+    {% csrf_token %}
+    <div class="fg-row">
+      <div class="fg">
+        <label for="cat-name">Category Name</label>
+        <input type="text" id="cat-name" name="name"
+               placeholder="e.g. Dance" required>
+      </div>
+      <div class="fg">
+        <label for="cat-slug">Slug <span style="font-weight:400;text-transform:none;">(used as filter key)</span></label>
+        <input type="text" id="cat-slug" name="slug"
+               placeholder="e.g. dance" required
+               pattern="[a-z0-9\-]+" title="Lowercase letters, numbers and hyphens only">
+        <p class="hint">Lowercase, no spaces — e.g. lip-sync</p>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-dark" style="margin-top:8px;">Add Category →</button>
+  </form>
+</div>
+{% else %}
+<div class="flash" style="background:#fff8e1;color:#f57f17;border:1px solid #ffe082;margin-bottom:24px;">
+  Maximum 4 categories reached. Delete one to add another.
+</div>
+{% endif %}
+
+<div class="section-gap">
+  {% for cat in categories %}
+  {% with count=cat.items.count %}
+  <div class="cat-card">
+
+    <div class="cat-header">
+      <div style="flex:1;">
+
+        {# ── Display mode ───────────────────────────────────── #}
+        <div id="cat-display-{{ cat.pk }}" style="display:flex;align-items:center;gap:12px;">
+          <div>
+            <h3>{{ cat.name }}</h3>
+            <div class="cat-meta">
+              slug: {{ cat.slug }}
+              &nbsp;·&nbsp;
+              position: {{ cat.order }}
+            </div>
+          </div>
+          <button type="button"
+                  onclick="toggleCatEdit('{{ cat.pk }}')"
+                  style="background:rgba(255,255,255,0.15);border:none;color:#fff;
+                         font-family:var(--font-mono);font-size:11px;padding:4px 10px;
+                         border-radius:4px;cursor:pointer;">
+            Edit
+          </button>
+        </div>
+
+        {# ── Edit mode ──────────────────────────────────────── #}
+        <form id="cat-edit-{{ cat.pk }}"
+              method="post"
+              action="{% url 'control:work_edit_category' cat.pk %}"
+              style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+          {% csrf_token %}
+          <input type="text" name="name" value="{{ cat.name }}"
+                 required placeholder="Category name"
+                 style="padding:6px 10px;border:none;border-radius:4px;
+                        font-size:14px;font-family:var(--font-body);flex:1;min-width:140px;">
+          <input type="text" name="slug" value="{{ cat.slug }}"
+                 required placeholder="slug"
+                 style="padding:6px 10px;border:none;border-radius:4px;
+                        font-size:14px;font-family:var(--font-mono);width:120px;">
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-family:var(--font-mono);font-size:10px;
+                           color:rgba(255,255,255,0.6);margin:0;padding:0;
+                           text-transform:uppercase;letter-spacing:.04em;">
+              Position
+            </label>
+            <input type="number" name="order" value="{{ cat.order }}"
+                   min="0" max="3" step="1"
+                   title="Display position on the frontend (0 = first)"
+                   style="padding:6px 10px;border:none;border-radius:4px;
+                          font-size:14px;font-family:var(--font-mono);width:72px;
+                          text-align:center;">
+          </div>
+          <button type="submit"
+                  style="background:#fff;color:var(--ink);border:none;
+                         font-family:var(--font-mono);font-size:12px;
+                         padding:6px 14px;border-radius:4px;cursor:pointer;">
+            Save
+          </button>
+          <button type="button"
+                  onclick="toggleCatEdit('{{ cat.pk }}')"
+                  style="background:transparent;color:rgba(255,255,255,0.7);border:none;
+                         font-family:var(--font-mono);font-size:12px;cursor:pointer;">
+            Cancel
+          </button>
+        </form>
+
+      </div>
+
+      {# Delete category #}
+      <form method="post" action="{% url 'control:work_delete_category' cat.pk %}"
+            onsubmit="return confirm('Delete {{ cat.name }} and all its videos?')"
+            style="margin-left:16px;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger" style="font-size:11px;padding:6px 14px;">
+          Delete
+        </button>
+      </form>
+    </div>
+
+    <div class="cat-body">
+
+      <div class="capacity {% if count >= 3 %}cap-full{% endif %}">
+        <span>{{ count }}/3 videos</span>
+        <div class="cap-bar">
+          <div class="cap-fill" style="width:{% widthratio count 3 100 %}%"></div>
+        </div>
+        {% if count >= 3 %}<span style="color:#c62828;">Full</span>{% endif %}
+      </div>
+
+      {% if cat.items.all %}
+        {% for item in cat.items.all %}
+
+        {# ════ Item row — wraps display + edit + actions ════ #}
+        <div class="item-row" id="item-row-{{ item.pk }}" style="flex-wrap:wrap;">
+
+          {# Thumbnail — always visible #}
+          <div class="item-thumb">
+            {% if item.thumbnail %}
+              <img src="{{ item.thumbnail.url }}" alt="{{ item.title }}">
+            {% elif item.is_uploaded %}
+              🎬
+            {% else %}
+              🔗
+            {% endif %}
+          </div>
+
+          {# ── Display info (hidden while editing) ── #}
+          <div class="item-info" id="item-display-{{ item.pk }}">
+            <div class="item-title">{{ item.title }}</div>
+            <div class="item-sub">
+              {% if item.client %}{{ item.client }}{% endif %}
+              {% if item.client and item.meta_label %} · {% endif %}
+              {% if item.meta_label %}{{ item.meta_label }}{% endif %}
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap;">
+              {% if item.post_views or item.post_likes or item.post_comments %}
+              <span style="font-family:var(--font-mono);font-size:10px;
+                           background:#f3e5f5;color:#6a1b9a;
+                           padding:2px 8px;border-radius:20px;">
+                📊
+                {% if item.post_views %}{{ item.post_views|floatformat:0 }} views{% endif %}
+                {% if item.post_likes %} · {{ item.post_likes|floatformat:0 }} likes{% endif %}
+                {% if item.post_comments %} · {{ item.post_comments|floatformat:0 }} comments{% endif %}
+              </span>
+              {% elif item.engagement %}
+              <span style="font-family:var(--font-mono);font-size:10px;
+                           background:#f3e5f5;color:#6a1b9a;
+                           padding:2px 8px;border-radius:20px;">
+                📊 {{ item.engagement }}
+              </span>
+              {% endif %}
+              {% if item.post_date %}
+              <span style="font-family:var(--font-mono);font-size:10px;color:var(--gray-1);">
+                🗓 {{ item.post_date }}
+              </span>
+              {% endif %}
+              {% if item.stats_fetched_at %}
+              <span style="font-family:var(--font-mono);font-size:9px;color:#bbb;"
+                    title="Stats fetched {{ item.stats_fetched_at|date:'d M Y H:i' }}">
+                ↻ {{ item.stats_fetched_at|timesince }} ago
+              </span>
+              {% endif %}
+              {% if item.post_url %}
+              <a href="{{ item.post_url }}" target="_blank"
+                 style="font-family:var(--font-mono);font-size:10px;color:var(--gray-1);
+                        text-decoration:none;border-bottom:1px solid var(--line);">
+                View post ↗
+              </a>
+              {% endif %}
+            </div>
+          </div>
+
+          {# ── Action buttons (hidden while editing) ── #}
+          <div id="item-actions-{{ item.pk }}"
+               style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            {% if item.is_uploaded %}
+              <span class="item-badge badge-uploaded">Uploaded</span>
+            {% else %}
+              <span class="item-badge badge-embed">Embed</span>
+            {% endif %}
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <form method="post" action="{% url 'control:work_reorder_item' item.pk %}" style="margin:0;">
+                {% csrf_token %}
+                <input type="hidden" name="direction" value="up">
+                <button type="submit" class="btn btn-ghost"
+                        style="font-size:11px;padding:3px 8px;line-height:1;"
+                        title="Move up">↑</button>
+              </form>
+              <form method="post" action="{% url 'control:work_reorder_item' item.pk %}" style="margin:0;">
+                {% csrf_token %}
+                <input type="hidden" name="direction" value="down">
+                <button type="submit" class="btn btn-ghost"
+                        style="font-size:11px;padding:3px 8px;line-height:1;"
+                        title="Move down">↓</button>
+              </form>
+            </div>
+            <button type="button" class="btn btn-ghost"
+                    style="font-size:11px;padding:6px 12px;"
+                    onclick="toggleItemEdit('{{ item.pk }}')">Edit</button>
+            <form method="post" action="{% url 'control:work_delete_item' item.pk %}"
+                  onsubmit="return confirm('Delete {{ item.title }}?')">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger"
+                      style="font-size:11px;padding:6px 12px;">✕</button>
+            </form>
+          </div>
+
+          {# ── Edit form — full width below, shown on Edit click ── #}
+          <form id="item-edit-{{ item.pk }}"
+                method="post"
+                action="{% url 'control:work_edit_item' item.pk %}"
+                enctype="multipart/form-data"
+                class="upload-form"
+                style="display:none;width:100%;padding:16px 0 8px;border-top:1px solid var(--line);margin-top:8px;">
+            {% csrf_token %}
+
+            <div class="fg-row" style="margin-bottom:10px;">
+              <div class="fg" style="margin-bottom:0;">
+                <label>Title *</label>
+                <input type="text" name="title" value="{{ item.title }}" required
+                       placeholder="e.g. Pepsi Dance Challenge">
+              </div>
+              <div class="fg" style="margin-bottom:0;">
+                <label>Client / Brand</label>
+                <input type="text" name="client" value="{{ item.client }}"
+                       placeholder="e.g. Pepsi Kenya">
+              </div>
+            </div>
+
+            <div class="fg" style="margin-bottom:10px;">
+              <label>Meta label</label>
+              <input type="text" name="meta_label" value="{{ item.meta_label }}"
+                     placeholder="e.g. Dance · TikTok · 2.1M views">
+            </div>
+
+            <div class="fg-row" style="margin-bottom:10px;">
+              <div class="fg" style="margin-bottom:0;">
+                <label>Post link</label>
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <input type="url" name="post_url" id="edit-post-url-{{ item.pk }}"
+                         value="{{ item.post_url }}"
+                         placeholder="https://tiktok.com/@... or instagram.com/p/..."
+                         style="flex:1;">
+                  <button type="button"
+                          onclick="fetchStats('{{ item.pk }}', '{% url 'control:work_fetch_stats' %}')"
+                          id="fetch-btn-{{ item.pk }}"
+                          style="white-space:nowrap;padding:8px 12px;background:var(--ink);
+                                 color:#fff;border:none;border-radius:6px;font-family:var(--font-mono);
+                                 font-size:11px;cursor:pointer;">
+                    ↻ Fetch Stats
+                  </button>
+                </div>
+                <p class="hint">TikTok · Instagram · Facebook — paste the post link and click Fetch Stats</p>
+              </div>
+            </div>
+
+            {# Hidden inputs carry the fetched stats to the form submit #}
+            <input type="hidden" name="post_views"   id="edit-post-views-{{ item.pk }}"   value="{{ item.post_views }}">
+            <input type="hidden" name="post_likes"   id="edit-post-likes-{{ item.pk }}"   value="{{ item.post_likes }}">
+            <input type="hidden" name="post_comments" id="edit-post-comments-{{ item.pk }}" value="{{ item.post_comments }}">
+            <input type="hidden" name="post_date"    id="edit-post-date-{{ item.pk }}"    value="{{ item.post_date|default:'' }}">
+            <input type="hidden" name="engagement"   id="edit-engagement-{{ item.pk }}"   value="{{ item.engagement }}">
+
+            {# Stats preview card — shown after fetch #}
+            <div id="stats-preview-{{ item.pk }}"
+                 style="display:{% if item.post_views or item.post_likes %}flex{% else %}none{% endif %};
+                        gap:16px;margin-bottom:10px;padding:10px 14px;
+                        background:#f8f5ff;border:1px solid #e0d7f7;border-radius:8px;flex-wrap:wrap;">
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <span style="font-family:var(--font-mono);font-size:9px;color:#888;text-transform:uppercase;">Views</span>
+                <span id="sp-views-{{ item.pk }}" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:#6a1b9a;">
+                  {{ item.post_views|default:"—" }}
+                </span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <span style="font-family:var(--font-mono);font-size:9px;color:#888;text-transform:uppercase;">Likes</span>
+                <span id="sp-likes-{{ item.pk }}" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:#6a1b9a;">
+                  {{ item.post_likes|default:"—" }}
+                </span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <span style="font-family:var(--font-mono);font-size:9px;color:#888;text-transform:uppercase;">Comments</span>
+                <span id="sp-comments-{{ item.pk }}" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:#6a1b9a;">
+                  {{ item.post_comments|default:"—" }}
+                </span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <span style="font-family:var(--font-mono);font-size:9px;color:#888;text-transform:uppercase;">Posted</span>
+                <span id="sp-date-{{ item.pk }}" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:#6a1b9a;">
+                  {% if item.post_date %}{{ item.post_date }}{% else %}—{% endif %}
+                </span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:120px;">
+                <span style="font-family:var(--font-mono);font-size:9px;color:#888;text-transform:uppercase;">Title / Caption</span>
+                <span id="sp-title-{{ item.pk }}" style="font-family:var(--font-mono);font-size:11px;color:#444;
+                      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;">—</span>
+              </div>
+            </div>
+
+            <div class="fg" style="margin-bottom:10px;">
+              <label>Video source</label>
+              <select name="video_source" id="vsrc-edit-{{ item.pk }}"
+                      onchange="toggleVideoSource('edit-{{ item.pk }}', this.value)">
+                <option value="upload" {% if item.is_uploaded %}selected{% endif %}>Upload a file (MP4 / MOV)</option>
+                <option value="embed" {% if not item.is_uploaded %}selected{% endif %}>Embed URL (YouTube / TikTok)</option>
+              </select>
+            </div>
+
+            {# Uploaded file section #}
+            <div id="upload-edit-{{ item.pk }}" class="fg"
+                 style="margin-bottom:10px;{% if not item.is_uploaded %}display:none;{% endif %}">
+              <label>Video file</label>
+              {% if item.is_uploaded and item.video_file %}
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
+                  <a href="{{ item.video_file.url }}" target="_blank"
+                     style="font-family:var(--font-mono);font-size:11px;color:var(--gray-1);">
+                    {{ item.video_file.name|slice:"15:" }}
+                  </a>
+                  <button type="button"
+                          onclick="if(confirm('Remove the video file from \'{{ item.title }}\'? The item and its details will be kept.')) postTo('{% url 'control:work_clear_item_video' item.pk %}')"
+                          style="background:#fff0f0;color:#c62828;border:1px solid #ffcdd2;
+                                 font-family:var(--font-mono);font-size:10px;
+                                 padding:3px 10px;border-radius:4px;cursor:pointer;">
+                    Remove video
+                  </button>
+                </div>
+              {% endif %}
+              <input type="file" name="video_file" accept="video/mp4,video/quicktime,video/*">
+              <p class="hint">MP4 or MOV — leave blank to keep current file</p>
+            </div>
+
+            {# Embed URL section #}
+            <div id="embed-edit-{{ item.pk }}" class="fg"
+                 style="margin-bottom:10px;{% if item.is_uploaded %}display:none;{% endif %}">
+              <label>Embed URL</label>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <input type="url" name="video_embed_url"
+                       value="{% if not item.is_uploaded %}{{ item.video_embed_url }}{% endif %}"
+                       placeholder="https://www.youtube.com/embed/... or https://www.tiktok.com/embed/..."
+                       style="flex:1;min-width:200px;">
+                {% if not item.is_uploaded and item.video_embed_url %}
+                <button type="button"
+                        onclick="if(confirm('Remove the embed URL from \'{{ item.title }}\'? The item and its details will be kept.')) postTo('{% url 'control:work_clear_item_video' item.pk %}')"
+                        style="background:#fff0f0;color:#c62828;border:1px solid #ffcdd2;
+                               font-family:var(--font-mono);font-size:10px;
+                               padding:3px 10px;border-radius:4px;cursor:pointer;">
+                  Remove embed
+                </button>
+                {% endif %}
+              </div>
+              <p class="hint">Use the embed URL, not the share link</p>
+            </div>
+
+            {# Thumbnail #}
+            <div class="fg" style="margin-bottom:10px;">
+              <label>Thumbnail image <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+              {% if item.thumbnail %}
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                  <img src="{{ item.thumbnail.url }}" alt="Current thumbnail"
+                       style="width:60px;height:40px;object-fit:cover;border-radius:4px;border:1px solid var(--line);">
+                  <span style="font-family:var(--font-mono);font-size:11px;color:var(--gray-1);">Current thumbnail</span>
+                </div>
+              {% endif %}
+              <input type="file" name="thumbnail" accept="image/*">
+              <p class="hint">Upload a new image to replace — leave blank to keep current</p>
+            </div>
+
+            {# Save / Cancel — always visible at bottom of edit form #}
+            <div style="display:flex;gap:8px;padding-top:4px;">
+              <button type="submit" class="btn btn-dark"
+                      style="font-size:12px;padding:7px 16px;">
+                Save changes →
+              </button>
+              <button type="button" class="btn btn-ghost"
+                      style="font-size:12px;padding:7px 16px;"
+                      onclick="toggleItemEdit('{{ item.pk }}')">
+                Cancel
+              </button>
+            </div>
+
+          </form>
+
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">No videos yet — add one below</div>
+      {% endif %}
+
+      {% if count < 3 %}
+      <div class="add-toggle">
+        <button type="button" class="btn btn-ghost"
+                onclick="toggleForm('form-{{ cat.pk }}', this)">
+          + Add video
+        </button>
+      </div>
+      <div class="video-form-wrap" id="form-{{ cat.pk }}">
+        <form method="post"
+              action="{% url 'control:work_add_item' cat.pk %}"
+              enctype="multipart/form-data"
+              class="upload-form">
+          {% csrf_token %}
+          <div class="fg-row">
+            <div class="fg">
+              <label>Title *</label>
+              <input type="text" name="title" placeholder="e.g. Pepsi Dance Challenge" required>
+            </div>
+            <div class="fg">
+              <label>Client / Brand</label>
+              <input type="text" name="client" placeholder="e.g. Pepsi Kenya">
+            </div>
+          </div>
+          <div class="fg">
+            <label>Meta label</label>
+            <input type="text" name="meta_label" placeholder="e.g. Dance · TikTok · 2.1M views">
+          </div>
+          <div class="fg-row">
+            <div class="fg" style="margin-bottom:0;">
+              <label>Post link</label>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input type="url" name="post_url" id="add-post-url-{{ cat.pk }}"
+                       placeholder="https://tiktok.com/@... or instagram.com/p/..."
+                       style="flex:1;">
+                <button type="button"
+                        onclick="fetchStatsNew('{{ cat.pk }}', '{% url 'control:work_fetch_stats' %}')"
+                        id="fetch-btn-add-{{ cat.pk }}"
+                        style="white-space:nowrap;padding:8px 12px;background:var(--ink);
+                               color:#fff;border:none;border-radius:6px;font-family:var(--font-mono);
+                               font-size:11px;cursor:pointer;">
+                  ↻ Fetch Stats
+                </button>
+              </div>
+              <p class="hint">TikTok · Instagram · Facebook — paste link and click Fetch Stats</p>
+            </div>
+          </div>
+
+          {# Hidden stat inputs — populated by fetch #}
+          <input type="hidden" name="post_views"    id="add-views-{{ cat.pk }}"    value="0">
+          <input type="hidden" name="post_likes"    id="add-likes-{{ cat.pk }}"    value="0">
+          <input type="hidden" name="post_comments" id="add-comments-{{ cat.pk }}" value="0">
+          <input type="hidden" name="post_date"     id="add-date-{{ cat.pk }}"     value="">
+          <input type="hidden" name="engagement"    id="add-engagement-{{ cat.pk }}" value="">
+
+          {# Stats preview — hidden until fetch completes #}
+          <div id="add-stats-preview-{{ cat.pk }}"
+               style="display:none;gap:16px;margin-bottom:4px;padding:10px 14px;
+                      background:#f8f5ff;border:1px solid #e0d7f7;border-radius:8px;flex-wrap:wrap;">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span style="font-family:var(--font-mono);font-size:9px;color:#888;text-transform:uppercase;">Views</span>
+              <span id="add-sp-views-{{ cat.pk }}" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:#6a1b9a;">—</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span style="font-family:var(--font-mono);font-size:9px;color:#888;text-transform:uppercase;">Likes</span>
+              <span id="add-sp-likes-{{ cat.pk }}" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:#6a1b9a;">—</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span style="font-family:var(--font-mono);font-size:9px;color:#888;text-transform:uppercase;">Comments</span>
+              <span id="add-sp-comments-{{ cat.pk }}" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:#6a1b9a;">—</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span style="font-family:var(--font-mono);font-size:9px;color:#888;text-transform:uppercase;">Posted</span>
+              <span id="add-sp-date-{{ cat.pk }}" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:#6a1b9a;">—</span>
+            </div>
+          </div>
+
+
+          <div class="fg">
+            <label>Video source</label>
+            <select name="video_source" id="vsrc-{{ cat.pk }}"
+                    onchange="toggleVideoSource('{{ cat.pk }}', this.value)">
+              <option value="upload">Upload a file (MP4 / MOV)</option>
+              <option value="embed">Embed URL (YouTube / TikTok)</option>
+            </select>
+          </div>
+          <div id="upload-{{ cat.pk }}" class="fg">
+            <label>Video file</label>
+            <input type="file" name="video_file" accept="video/mp4,video/quicktime,video/*">
+            <p class="hint">MP4 or MOV — keep under 10 MB</p>
+          </div>
+          <div id="embed-{{ cat.pk }}" class="fg" style="display:none;">
+            <label>Embed URL</label>
+            <input type="url" name="video_embed_url"
+                   placeholder="https://www.youtube.com/embed/... or https://www.tiktok.com/embed/...">
+            <p class="hint">Use the embed URL, not the share link</p>
+          </div>
+          <div class="fg">
+            <label>Thumbnail image <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+            <input type="file" name="thumbnail" accept="image/*">
+            <p class="hint">Shown as poster before the video plays</p>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:8px;">
+            <button type="submit" class="btn btn-dark">Save video →</button>
+            <button type="button" class="btn btn-ghost"
+                    onclick="toggleForm('form-{{ cat.pk }}', null)">Cancel</button>
+          </div>
+        </form>
+      </div>
+      {% else %}
+      <p style="font-family:var(--font-mono);font-size:11px;color:var(--gray-1);margin-top:16px;">
+        Category full (3/3). Delete a video to add another.
+      </p>
+      {% endif %}
+
+    </div>
+  </div>
+  {% endwith %}
+  {% empty %}
+  <div class="card" style="text-align:center;padding:40px;">
+    <p style="font-family:var(--font-mono);font-size:13px;color:var(--gray-1);">
+      No categories yet. Add your first one above.
+    </p>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+/* ── fetchStats: fetch live stats for an existing WorkItem ──────────────
+   Called by the "↻ Fetch Stats" button in the edit form.
+   Posts to work_fetch_stats/ with the URL + item_pk so the view
+   can persist stats immediately; also updates the preview card inline.
+─────────────────────────────────────────────────────────────────────── */
+function fetchStats(itemPk, fetchUrl) {
+  const urlInput = document.getElementById('edit-post-url-' + itemPk);
+  const btn      = document.getElementById('fetch-btn-' + itemPk);
+  if (!urlInput || !urlInput.value.trim()) {
+    alert('Paste a post URL first.');
+    return;
+  }
+  btn.textContent = '…';
+  btn.disabled = true;
+
+  const fd = new FormData();
+  fd.append('post_url', urlInput.value.trim());
+  fd.append('item_pk',  itemPk);
+  fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+  fetch(fetchUrl, { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(d => {
+      btn.textContent = '✓ Fetched';
+      btn.style.background = '#2e7d32';
+      setTimeout(() => { btn.textContent = '↻ Fetch Stats'; btn.style.background = ''; btn.disabled = false; }, 3000);
+
+      if (d.error && !d.views && !d.likes) {
+        alert('Could not fetch stats: ' + d.error + '\nYou can still save the URL without stats.');
+        return;
+      }
+      // Update hidden inputs
+      document.getElementById('edit-post-views-'    + itemPk).value = d.views    || 0;
+      document.getElementById('edit-post-likes-'    + itemPk).value = d.likes    || 0;
+      document.getElementById('edit-post-comments-' + itemPk).value = d.comments || 0;
+      document.getElementById('edit-post-date-'     + itemPk).value = d.date     || '';
+      document.getElementById('edit-engagement-'    + itemPk).value = d.engagement_text || '';
+
+      // Update preview card
+      const fmt = n => n ? n.toLocaleString() : '—';
+      document.getElementById('sp-views-'    + itemPk).textContent = fmt(d.views);
+      document.getElementById('sp-likes-'    + itemPk).textContent = fmt(d.likes);
+      document.getElementById('sp-comments-' + itemPk).textContent = fmt(d.comments);
+      document.getElementById('sp-date-'     + itemPk).textContent = d.date  || '—';
+      document.getElementById('sp-title-'    + itemPk).textContent = d.title || d.author || '—';
+      document.getElementById('stats-preview-' + itemPk).style.display = 'flex';
+    })
+    .catch(e => {
+      btn.textContent = '↻ Fetch Stats';
+      btn.disabled = false;
+      alert('Network error: ' + e);
+    });
+}
+
+/* ── fetchStatsNew: same but for the "Add video" form (no item_pk yet) ──
+─────────────────────────────────────────────────────────────────────── */
+function fetchStatsNew(catPk, fetchUrl) {
+  const urlInput = document.getElementById('add-post-url-' + catPk);
+  const btn      = document.getElementById('fetch-btn-add-' + catPk);
+  if (!urlInput || !urlInput.value.trim()) {
+    alert('Paste a post URL first.');
+    return;
+  }
+  btn.textContent = '…';
+  btn.disabled = true;
+
+  const fd = new FormData();
+  fd.append('post_url', urlInput.value.trim());
+  fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+  fetch(fetchUrl, { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(d => {
+      btn.textContent = '✓ Fetched';
+      btn.style.background = '#2e7d32';
+      setTimeout(() => { btn.textContent = '↻ Fetch Stats'; btn.style.background = ''; btn.disabled = false; }, 3000);
+
+      if (d.error && !d.views && !d.likes) {
+        alert('Could not fetch stats: ' + d.error + '\nYou can still save the URL without stats.');
+        return;
+      }
+      document.getElementById('add-views-'      + catPk).value = d.views    || 0;
+      document.getElementById('add-likes-'      + catPk).value = d.likes    || 0;
+      document.getElementById('add-comments-'   + catPk).value = d.comments || 0;
+      document.getElementById('add-date-'       + catPk).value = d.date     || '';
+      document.getElementById('add-engagement-' + catPk).value = d.engagement_text || '';
+
+      const fmt = n => n ? n.toLocaleString() : '—';
+      document.getElementById('add-sp-views-'    + catPk).textContent = fmt(d.views);
+      document.getElementById('add-sp-likes-'    + catPk).textContent = fmt(d.likes);
+      document.getElementById('add-sp-comments-' + catPk).textContent = fmt(d.comments);
+      document.getElementById('add-sp-date-'     + catPk).textContent = d.date || '—';
+      document.getElementById('add-stats-preview-' + catPk).style.display = 'flex';
+    })
+    .catch(e => {
+      btn.textContent = '↻ Fetch Stats';
+      btn.disabled = false;
+      alert('Network error: ' + e);
+    });
+}
+
+
+   Used by "Remove video" / "Remove embed" buttons that live inside the
+   item edit form — browsers don't allow nested <form> elements so we
+   build a temporary form, attach the CSRF token, and submit it.
+─────────────────────────────────────────────────────────────────────── */
+function postTo(url) {
+  const f = document.createElement('form');
+  f.method = 'post';
+  f.action = url;
+  const csrf = document.createElement('input');
+  csrf.type  = 'hidden';
+  csrf.name  = 'csrfmiddlewaretoken';
+  csrf.value = '{{ csrf_token }}';
+  f.appendChild(csrf);
+  document.body.appendChild(f);
+  f.submit();
+}
+
+/* ── Upload overlay ──────────────────────────────────────────────────────
+   Attaches to every form with class="upload-form". Only shows the overlay
+   when there is actually a file selected (video_file or thumbnail), so
+   embed-URL-only submits don't show a misleading spinner.
+─────────────────────────────────────────────────────────────────────── */
+(function () {
+  const overlay = document.getElementById('upload-overlay');
+  const bar     = document.getElementById('upload-bar');
+
+  function animateBar() {
+    let w = 0;
+    const iv = setInterval(() => {
+      // Creep to 85 % quickly, then slow right down — we don't know when
+      // Cloudinary will finish, so never reach 100 % until the page reloads.
+      w = w < 70 ? w + 2 : w < 85 ? w + 0.3 : w;
+      bar.style.width = w + '%';
+      if (w >= 85) clearInterval(iv);
+    }, 120);
+  }
+
+  document.querySelectorAll('form.upload-form').forEach(function (form) {
+    form.addEventListener('submit', function () {
+      // Check if any file input in this form has a file selected
+      const hasFile = Array.from(form.querySelectorAll('input[type="file"]'))
+                           .some(function (inp) { return inp.files && inp.files.length > 0; });
+      if (hasFile) {
+        overlay.style.display = 'flex';
+        animateBar();
+      }
+    });
+  });
+})();
+</script>
+
+{% endblock %}

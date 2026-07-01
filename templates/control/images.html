@@ -1,0 +1,55 @@
+{% extends 'control/base.html' %}
+{% block title %}Images - Control Panel{% endblock %}
+{% block page_title %}About Images{% endblock %}
+
+{% block content %}
+    {% if messages %}
+    <ul class="messages">
+      {% for msg in messages %}
+      <li class="{{ msg.tags }}">{{ msg }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% include 'control/partials/images_form.html' %}
+
+    {% if images %}
+    <div class="image-grid">
+      {% for img in images %}
+      <div class="image-card" id="img-card-{{ img.pk }}">
+        <div class="thumb">
+          <img src="{{ img.image.url }}" alt="{{ img.alt_text|default:'Image' }}">
+        </div>
+        <div class="card-body">
+          <div class="card-display" id="img-display-{{ img.pk }}">
+            {% if img.alt_text %}
+              <p class="caption">{{ img.alt_text }}</p>
+            {% else %}
+              <p class="no-caption">No caption</p>
+            {% endif %}
+            <div class="card-actions">
+              <button class="btn-edit" onclick="toggleImgEdit({{ img.pk }})">Edit</button>
+              <form method="post" action="{% url 'control:image_delete' img.pk %}" style="flex:1;margin:0;" onsubmit="return confirm('Delete this image?')">
+                {% csrf_token %}
+                <button type="submit" class="btn-del" style="width:100%;">Delete</button>
+              </form>
+            </div>
+          </div>
+          <div class="card-edit" id="img-edit-{{ img.pk }}">
+            <form method="post" action="{% url 'control:image_edit' img.pk %}">
+              {% csrf_token %}
+              <input type="text" name="alt_text" value="{{ img.alt_text }}" placeholder="Caption / alt text">
+              <div class="edit-actions">
+                <button type="submit" class="btn-save">Save</button>
+                <button type="button" class="btn-cancel" onclick="toggleImgEdit({{ img.pk }})">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-note">No images uploaded yet.</div>
+    {% endif %}
+{% endblock %}

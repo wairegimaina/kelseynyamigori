@@ -1,0 +1,20 @@
+<h2>Add Brand</h2>
+<div class="add-card">
+  <form method="post" enctype="multipart/form-data" action="{% url 'control:brands_list' %}">
+    {% csrf_token %}
+    <div class="form-grid">
+      <input type="text" name="name" placeholder="Brand name" required>
+      <input type="text" name="category" placeholder="Category (e.g. Fashion)">
+    </div>
+    <div class="form-grid-3">
+      <input type="url"    name="url"      placeholder="Website URL">
+      <input type="number" name="rotation" placeholder="Rotation (-3 to 3)" step="0.1" min="-3" max="3" value="0">
+      <input type="number" name="order"    placeholder="Order (0, 1, 2…)" min="0" value="0">
+    </div>
+    <div class="file-row">
+      <label>Logo image</label>
+      <input type="file" name="logo" accept="image/*">
+    </div>
+    <button type="submit" class="btn-add">+ Add Brand</button>
+  </form>
+</div>

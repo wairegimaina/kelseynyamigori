@@ -1,0 +1,783 @@
+{% extends 'control/base.html' %}
+{% block title %}Campaigns - Control Panel{% endblock %}
+{% block page_title %}Campaigns{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Campaign styles (light theme) ── */
+.camp-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:14px; margin-bottom:28px; }
+.camp-stat { background:#fff; border:1px solid #e8e8e8; border-radius:8px; padding:16px 18px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.camp-stat__label { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#888; margin-bottom:6px; font-family:var(--font-mono); }
+.camp-stat__value { font-size:24px; font-weight:700; color:var(--ink,#111); }
+
+.camp-cards { display:flex; flex-direction:column; gap:20px; }
+.camp-card { background:#fff; border:1px solid #e8e8e8; border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+.camp-card__head { display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid #f0f0f0; flex-wrap:wrap; background:#fafafa; }
+.camp-card__brand { font-size:12px; color:#888; font-family:var(--font-mono); }
+.camp-card__name { font-weight:700; font-size:16px; flex:1; color:var(--ink,#111); }
+.camp-card__status { font-size:11px; padding:3px 10px; border-radius:20px; font-weight:600; letter-spacing:.04em; }
+.status-draft     { background:#f0f0f0; color:#666; }
+.status-active    { background:#e8f5e9; color:#2e7d32; }
+.status-completed { background:#e3f2fd; color:#1565c0; }
+.status-cancelled { background:#ffebee; color:#c62828; }
+
+.camp-card__body { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0; }
+@media(max-width:700px){ .camp-card__body { grid-template-columns:1fr; } }
+.camp-section { padding:16px 20px; border-right:1px solid #f0f0f0; }
+.camp-section:last-child { border-right:none; }
+.camp-section__title { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#999; margin-bottom:10px; font-family:var(--font-mono); }
+
+.progress-bar { background:#f0f0f0; border-radius:4px; height:6px; margin:8px 0 4px; }
+.progress-bar__fill { background:var(--ink,#111); border-radius:4px; height:100%; transition:width .3s; }
+.progress-text { font-size:12px; color:#888; }
+
+.deliverable-row { display:flex; justify-content:space-between; align-items:center; font-size:13px; padding:3px 0; color:var(--ink,#111); }
+.del-badge { background:#f0f0f0; border-radius:4px; padding:1px 7px; font-size:11px; color:#555; }
+
+.posts-section { padding:14px 20px; border-top:1px solid #f0f0f0; }
+.post-row { display:grid; grid-template-columns:auto 1fr auto auto; gap:8px; align-items:start; font-size:12px; padding:8px 0; border-bottom:1px solid #f5f5f5; }
+.post-row:last-child { border-bottom:none; }
+.post-platform { font-size:10px; text-transform:uppercase; letter-spacing:.06em; background:#f0f0f0; padding:2px 7px; border-radius:3px; white-space:nowrap; color:#555; font-family:var(--font-mono); margin-top:2px; }
+.post-url { color:#1565c0; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
+.post-url:hover { text-decoration:underline; }
+.post-meta { color:#aaa; white-space:nowrap; font-size:11px; font-family:var(--font-mono); }
+.post-stats { display:flex; gap:10px; margin-top:4px; font-family:var(--font-mono); font-size:11px; color:#666; }
+
+.checklist-item { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; color:var(--ink,#111); width:100%; }
+.checklist-item.done { opacity:.5; text-decoration:line-through; }
+.check-btn { background:none; border:1.5px solid #ddd; width:18px; height:18px; border-radius:3px; cursor:pointer; color:#2e7d32; font-size:12px; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0; }
+.check-btn.done { background:#e8f5e9; border-color:#2e7d32; }
+
+.camp-card__actions { padding:12px 20px; border-top:1px solid #f0f0f0; display:flex; gap:8px; flex-wrap:wrap; background:#fafafa; align-items:center; }
+
+/* Add-post form */
+.add-post-form { background:#f8f8f8; border:1px solid #e8e8e8; border-radius:8px; padding:16px; margin-top:10px; display:none; }
+.add-post-form.open { display:block; }
+.form-row   { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+.form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px; }
+@media(max-width:500px){ .form-row,.form-row-3 { grid-template-columns:1fr; } }
+
+/* Fetch stats preview inside add-post form */
+.stat-preview { display:none; gap:16px; padding:10px 14px; background:#f0f5ff; border:1px solid #d0dff7; border-radius:8px; margin-bottom:10px; flex-wrap:wrap; }
+.stat-preview.visible { display:flex; }
+.stat-box { display:flex; flex-direction:column; gap:2px; }
+.stat-box__label { font-size:9px; text-transform:uppercase; letter-spacing:.08em; color:#888; font-family:var(--font-mono); }
+.stat-box__value { font-size:16px; font-weight:700; color:var(--ink,#111); font-family:var(--font-mono); }
+
+/* Modal */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:500; align-items:flex-start; justify-content:center; padding:40px 16px; overflow-y:auto; }
+.modal-overlay.open { display:flex; }
+.modal { background:#fff; border:1px solid #e8e8e8; border-radius:12px; width:100%; max-width:640px; box-shadow:0 8px 32px rgba(0,0,0,.12); }
+.modal__head { display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-bottom:1px solid #f0f0f0; }
+.modal__title { font-weight:700; font-size:16px; color:var(--ink,#111); }
+.modal__close { background:none; border:none; color:#888; font-size:20px; cursor:pointer; line-height:1; }
+.modal__close:hover { color:var(--ink,#111); }
+.modal__body { padding:22px; }
+.modal__section { margin-bottom:20px; }
+.modal__section-title { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#999; margin-bottom:10px; font-family:var(--font-mono); }
+.form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.form-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+@media(max-width:500px){ .form-grid-2,.form-grid-3 { grid-template-columns:1fr; } }
+.form-field { display:flex; flex-direction:column; gap:5px; }
+.form-field label { font-size:11px; color:#888; font-family:var(--font-mono); }
+.form-field input, .form-field select, .form-field textarea {
+  background:#fff; border:1px solid #ddd; border-radius:6px; padding:8px 10px;
+  color:var(--ink,#111); font-size:13px; width:100%; box-sizing:border-box; font-family:inherit;
+}
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus { outline:none; border-color:var(--ink,#111); }
+.form-field textarea { min-height:60px; resize:vertical; }
+.modal__foot { padding:16px 22px; border-top:1px solid #f0f0f0; display:flex; justify-content:flex-end; gap:10px; }
+
+.del-entry { display:grid; grid-template-columns:1fr 1fr 80px 32px; gap:8px; align-items:center; margin-bottom:8px; }
+@media(max-width:500px){ .del-entry { grid-template-columns:1fr 1fr; } }
+.del-remove { background:none; border:1px solid #ffcdd2; color:#c62828; border-radius:4px; cursor:pointer; padding:4px 8px; font-size:13px; }
+
+.checklist-add-row { display:flex; gap:8px; margin-top:8px; }
+.checklist-add-row input { flex:1; }
+.checklist-preview-item { display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:4px 0; border-bottom:1px solid #f0f0f0; color:var(--ink,#111); }
+
+.btn-primary { background:var(--ink,#111); color:#fff; border:none; padding:9px 20px; border-radius:6px; font-weight:700; font-size:13px; cursor:pointer; font-family:var(--font-mono); text-decoration:none; display:inline-block; }
+.btn-primary:hover { opacity:.82; }
+.btn-ghost { background:none; border:1px solid #ddd; color:var(--ink,#111); padding:9px 16px; border-radius:6px; font-size:13px; cursor:pointer; font-family:var(--font-mono); }
+.btn-ghost:hover { background:#f5f5f5; }
+.btn-del { background:none; border:1px solid #ffcdd2; color:#c62828; padding:9px 16px; border-radius:6px; font-size:13px; cursor:pointer; font-family:var(--font-mono); }
+.btn-del:hover { background:#ffebee; }
+.btn-fetch { background:var(--ink,#111); color:#fff; border:none; padding:8px 12px; border-radius:6px; font-size:11px; cursor:pointer; font-family:var(--font-mono); white-space:nowrap; }
+.btn-fetch:hover { opacity:.82; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<ul class="messages">
+  {% for msg in messages %}<li class="{{ msg.tags }}">{{ msg }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+<!-- ── Summary stats ── -->
+<div class="camp-stats">
+  <div class="camp-stat">
+    <div class="camp-stat__label">Total</div>
+    <div class="camp-stat__value">{{ stats.total }}</div>
+  </div>
+  <div class="camp-stat">
+    <div class="camp-stat__label">Active</div>
+    <div class="camp-stat__value" style="color:#2e7d32;">{{ stats.active }}</div>
+  </div>
+  <div class="camp-stat">
+    <div class="camp-stat__label">Completed</div>
+    <div class="camp-stat__value" style="color:#1565c0;">{{ stats.completed }}</div>
+  </div>
+  <div class="camp-stat">
+    <div class="camp-stat__label">Posts Logged</div>
+    <div class="camp-stat__value">{{ stats.total_posts }}</div>
+  </div>
+  <div class="camp-stat">
+    <div class="camp-stat__label">Pending Deliverables</div>
+    <div class="camp-stat__value" style="color:#e65100;">{{ stats.pending_deliverables }}</div>
+  </div>
+</div>
+
+<div style="display:flex; justify-content:flex-end; margin-bottom:20px;">
+  <button class="btn-primary" onclick="openModal('newCampaign')">+ New Campaign</button>
+</div>
+
+<!-- ── Campaign cards ── -->
+<div class="camp-cards">
+{% for c in campaigns %}
+<div class="camp-card">
+
+  <!-- Header -->
+  <div class="camp-card__head">
+    {% if c.brand and c.brand.logo %}
+    <img src="{{ c.brand.logo.url }}" alt="{{ c.brand.name }}" style="height:28px;width:auto;border-radius:4px;object-fit:contain;">
+    {% endif %}
+    <div>
+      <div class="camp-card__brand">{{ c.brand.name|default:"No Brand" }}</div>
+      <div class="camp-card__name">{{ c.campaign_name }}</div>
+    </div>
+    <span class="camp-card__status status-{{ c.status }}">{{ c.get_status_display }}</span>
+    {% if c.start_date or c.end_date %}
+    <span style="margin-left:auto; font-family:var(--font-mono); font-size:12px; color:#888;">
+      {% if c.start_date %}{{ c.start_date|date:"d M Y" }}{% endif %}
+      {% if c.start_date and c.end_date %} → {% endif %}
+      {% if c.end_date %}{{ c.end_date|date:"d M Y" }}{% endif %}
+    </span>
+    {% endif %}
+  </div>
+
+  <!-- Body: progress / deliverables / checklist -->
+  <div class="camp-card__body">
+
+    <!-- Progress -->
+    <div class="camp-section">
+      <div class="camp-section__title">Progress</div>
+      <div style="font-size:28px; font-weight:700; color:var(--ink,#111);">{{ c.progress_percent }}%</div>
+      <div class="progress-bar"><div class="progress-bar__fill" style="width:{{ c.progress_percent }}%"></div></div>
+      <div class="progress-text">{{ c.total_completed }} / {{ c.total_required }} deliverables</div>
+      {% if c.notes %}
+      <div style="margin-top:10px; font-size:12px; color:#666; line-height:1.5;">{{ c.notes }}</div>
+      {% endif %}
+    </div>
+
+    <!-- Deliverables -->
+    <div class="camp-section">
+      <div class="camp-section__title">Deliverables</div>
+      {% for d in c.deliverables.all %}
+      <div class="deliverable-row">
+        <span>{{ d.get_platform_display }} — {{ d.get_content_type_display }}</span>
+        <span class="del-badge">×{{ d.required_quantity }}</span>
+        <form method="post" action="{% url 'control:campaign_deliverable_delete' d.pk %}" style="margin:0;" onsubmit="return confirm('Remove deliverable?')">
+          {% csrf_token %}<button type="submit" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:11px;padding:0 4px;">✕</button>
+        </form>
+      </div>
+      {% empty %}<div style="font-size:12px;color:#bbb;">No deliverables set.</div>
+      {% endfor %}
+    </div>
+
+    <!-- Checklist -->
+    <div class="camp-section">
+      <div class="camp-section__title">Brand Requirements</div>
+      {% for item in c.checklist.all %}
+      <form method="post" action="{% url 'control:campaign_checklist_toggle' item.pk %}" style="margin:0;">
+        {% csrf_token %}
+        <button type="submit" class="checklist-item {% if item.is_done %}done{% endif %}"
+                style="background:none;border:none;color:inherit;text-align:left;cursor:pointer;width:100%;padding:0;">
+          <span class="check-btn {% if item.is_done %}done{% endif %}">{% if item.is_done %}✓{% endif %}</span>
+          {{ item.item }}
+        </button>
+      </form>
+      {% empty %}<div style="font-size:12px;color:#bbb;">No requirements listed.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Published posts -->
+  <div class="posts-section">
+    <div class="camp-section__title" style="margin-bottom:8px;">
+      Posts Logged
+      <span style="background:#f0f0f0;border-radius:10px;padding:1px 8px;font-size:11px;color:#555;margin-left:6px;">
+        {{ c.posts.count }}
+      </span>
+    </div>
+    {% for post in c.posts.all %}
+    <div class="post-row">
+      <span class="post-platform">{{ post.get_platform_display }}</span>
+      <div style="overflow:hidden;">
+        {% if post.post_url %}
+          <a href="{{ post.post_url }}" target="_blank" rel="noopener" class="post-url">{{ post.post_url|truncatechars:55 }}</a>
+        {% else %}
+          <span style="color:#bbb;font-size:12px;">No URL</span>
+        {% endif %}
+        {% if post.views or post.likes or post.comments %}
+        <div class="post-stats">
+          {% if post.views %}👁 {{ post.views|floatformat:0 }}{% endif %}
+          {% if post.likes %}❤ {{ post.likes|floatformat:0 }}{% endif %}
+          {% if post.comments %}💬 {{ post.comments|floatformat:0 }}{% endif %}
+        </div>
+        {% endif %}
+        {% if post.caption %}<div class="post-meta" style="margin-top:2px;">{{ post.caption|truncatechars:70 }}</div>{% endif %}
+        {% if post.notes %}<div class="post-meta" style="margin-top:2px;color:#aaa;font-style:italic;">{{ post.notes|truncatechars:60 }}</div>{% endif %}
+      </div>
+      <span class="post-meta">{% if post.posting_date %}{{ post.posting_date|date:"d M Y" }}{% endif %}</span>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <button type="button" style="background:none;border:1px solid #ddd;color:#555;cursor:pointer;font-size:11px;padding:3px 8px;border-radius:4px;" onclick="togglePostEditForm({{ post.pk }})">Edit</button>
+        <form method="post" action="{% url 'control:campaign_post_delete' post.pk %}" style="margin:0;" onsubmit="return confirm('Remove this post?')">
+          {% csrf_token %}<button type="submit" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:12px;padding:4px;">✕</button>
+        </form>
+      </div>
+    </div>
+    <!-- Inline edit form for this post -->
+    <div class="add-post-form" id="post-edit-form-{{ post.pk }}" style="margin-top:4px;margin-bottom:8px;">
+      <form method="post" action="{% url 'control:campaign_post_edit' post.pk %}">
+        {% csrf_token %}
+        <div class="form-row">
+          <div class="form-field">
+            <label>Platform *</label>
+            <select name="platform" id="edit-platform-{{ post.pk }}" required
+                    onchange="onEditPlatformChange('{{ post.pk }}')">
+              {% for val,label in platform_choices %}<option value="{{ val }}" {% if post.platform == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Content Type</label>
+            <select name="content_type">
+              {% for val,label in content_type_choices %}<option value="{{ val }}" {% if post.content_type == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-field" style="margin-bottom:10px;">
+          <label>Post URL</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="url" name="post_url" id="edit-post-url-{{ post.pk }}"
+                   value="{{ post.post_url }}" placeholder="https://..." style="flex:1;">
+            <button type="button" class="btn-fetch" id="edit-fetch-btn-{{ post.pk }}"
+                    style="display:{% if post.platform == 'tiktok' %}''{% else %}none{% endif %};"
+                    onclick="fetchEditStats('{{ post.pk }}', '{% url 'control:campaign_fetch_stats' %}')">
+              ↻ Fetch Stats
+            </button>
+          </div>
+        </div>
+        <!-- Fetch notice for edit form -->
+        <div id="edit-csp-notice-{{ post.pk }}" style="display:none;font-size:11px;color:#b45309;font-family:var(--font-mono);margin-bottom:8px;padding:7px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;"></div>
+        <div class="form-row-3" style="margin-bottom:10px;">
+          <div class="form-field">
+            <label>Views</label>
+            <input type="number" name="views" id="edit-views-{{ post.pk }}" min="0" value="{{ post.views }}">
+          </div>
+          <div class="form-field">
+            <label>Likes</label>
+            <input type="number" name="likes" id="edit-likes-{{ post.pk }}" min="0" value="{{ post.likes }}">
+          </div>
+          <div class="form-field">
+            <label>Comments</label>
+            <input type="number" name="comments" id="edit-comments-{{ post.pk }}" min="0" value="{{ post.comments }}">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:10px;">
+          <div class="form-field">
+            <label>Date Posted</label>
+            <input type="date" name="posting_date" id="edit-date-{{ post.pk }}" value="{{ post.posting_date|date:'Y-m-d'|default:'' }}">
+          </div>
+          <div class="form-field">
+            <label>Linked Deliverable</label>
+            <select name="deliverable">
+              <option value="">— none —</option>
+              {% for d in post.campaign.deliverables.all %}<option value="{{ d.pk }}" {% if post.deliverable_id == d.pk %}selected{% endif %}>{{ d.get_platform_display }} {{ d.get_content_type_display }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-field" style="margin-bottom:8px;">
+          <label>Caption</label>
+          <textarea name="caption" rows="2" placeholder="Post caption…">{{ post.caption }}</textarea>
+        </div>
+        <div class="form-field" style="margin-bottom:12px;">
+          <label>Internal Notes</label>
+          <textarea name="notes" rows="1" placeholder="Internal notes…">{{ post.notes }}</textarea>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px;align-items:center;">
+          <button type="submit" class="btn-primary" style="font-size:12px;padding:7px 16px;">Save</button>
+          <button type="button" class="btn-ghost" style="font-size:12px;padding:7px 12px;" onclick="togglePostEditForm({{ post.pk }})">Cancel</button>
+          <div style="margin-left:auto;">
+            <form method="post" action="{% url 'control:campaign_post_delete' post.pk %}" style="margin:0;"
+                  onsubmit="return confirm('Delete this post permanently?')">
+              {% csrf_token %}
+              <button type="submit" class="btn-del" style="font-size:12px;padding:7px 12px;">Delete Post</button>
+            </form>
+          </div>
+        </div>
+      </form>
+    </div>
+    {% empty %}
+    <div style="font-size:12px;color:#bbb;padding:4px 0;">No posts logged yet.</div>
+    {% endfor %}
+
+    <!-- Add post toggle -->
+    <button class="btn-ghost" style="font-size:12px;margin-top:12px;padding:6px 14px;" onclick="togglePostForm({{ c.pk }})">+ Log a Post</button>
+
+    <div class="add-post-form" id="post-form-{{ c.pk }}">
+      <form method="post" action="{% url 'control:campaign_post_add' c.pk %}">
+        {% csrf_token %}
+
+        <!-- Platform + type -->
+        <div class="form-row">
+          <div class="form-field">
+            <label>Platform *</label>
+            <select name="platform" id="log-platform-{{ c.pk }}" required onchange="onLogPlatformChange('{{ c.pk }}')">              {% for val,label in platform_choices %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Content Type</label>
+            <select name="content_type">
+              {% for val,label in content_type_choices %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Post URL + fetch button (fetch only shown for TikTok) -->
+        <div class="form-field" style="margin-bottom:10px;">
+          <label>Post URL</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="url" name="post_url" id="post-url-{{ c.pk }}"
+                   placeholder="https://..."
+                   style="flex:1;">
+            <button type="button" class="btn-fetch" id="fetch-btn-{{ c.pk }}"
+                    style="display:none;"
+                    onclick="fetchCampStats('{{ c.pk }}', '{% url 'control:campaign_fetch_stats' %}')">              ↻ Fetch Stats
+            </button>
+          </div>
+        </div>
+
+        <!-- Stats preview — shown after fetch -->
+        <div class="stat-preview" id="camp-stat-preview-{{ c.pk }}">
+          <div class="stat-box">
+            <span class="stat-box__label">Views</span>
+            <span class="stat-box__value" id="csp-views-{{ c.pk }}">—</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-box__label">Likes</span>
+            <span class="stat-box__value" id="csp-likes-{{ c.pk }}">—</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-box__label">Comments</span>
+            <span class="stat-box__value" id="csp-comments-{{ c.pk }}">—</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-box__label">Posted</span>
+            <span class="stat-box__value" id="csp-date-{{ c.pk }}">—</span>
+          </div>
+          <div class="stat-box" style="flex:1;min-width:110px;">
+            <span class="stat-box__label">Creator</span>
+            <span class="stat-box__value" id="csp-author-{{ c.pk }}" style="font-size:12px;font-weight:600;word-break:break-all;">—</span>
+          </div>
+        </div>
+        <!-- Notice shown when stats are partial / unavailable -->
+        <div id="csp-notice-{{ c.pk }}" style="display:none;font-size:11px;color:#b45309;font-family:var(--font-mono);margin-bottom:8px;padding:7px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;"></div>
+
+        <!-- Stat inputs — populated by Fetch (TikTok) or entered manually -->
+        <div class="form-row-3" style="margin-bottom:10px;">
+          <div class="form-field">
+            <label>Views</label>
+            <input type="number" name="views" id="csp-h-views-{{ c.pk }}" min="0" value="0">
+          </div>
+          <div class="form-field">
+            <label>Likes</label>
+            <input type="number" name="likes" id="csp-h-likes-{{ c.pk }}" min="0" value="0">
+          </div>
+          <div class="form-field">
+            <label>Comments</label>
+            <input type="number" name="comments" id="csp-h-comments-{{ c.pk }}" min="0" value="0">
+          </div>
+        </div>
+
+        <!-- Date + deliverable -->
+        <div class="form-row">
+          <div class="form-field">
+            <label>Date Posted</label>
+            <input type="date" name="posting_date" id="csp-h-date-{{ c.pk }}">
+          </div>
+          <div class="form-field">
+            <label>Linked Deliverable</label>
+            <select name="deliverable">
+              <option value="">— none —</option>
+              {% for d in c.deliverables.all %}<option value="{{ d.pk }}">{{ d.get_platform_display }} {{ d.get_content_type_display }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Caption -->
+        <div class="form-field" style="margin-bottom:12px;">
+          <label>Caption / Notes</label>
+          <textarea name="caption" rows="2" placeholder="Paste caption or add a note…"></textarea>
+        </div>
+
+        <div style="display:flex;gap:8px;">
+          <button type="submit" class="btn-primary" style="font-size:12px;padding:7px 16px;">Save Post</button>
+          <button type="button" class="btn-ghost" style="font-size:12px;padding:7px 12px;" onclick="togglePostForm({{ c.pk }})">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="camp-card__actions">
+    <a href="{% url 'control:campaign_report_download' c.pk %}" class="btn-primary" style="font-size:12px;padding:7px 16px;">⬇ Report</a>
+    <button class="btn-ghost" style="font-size:12px;" onclick="openEditModal({{ c.pk }}, '{{ c.campaign_name|escapejs }}', '{{ c.brand_id|default:'' }}', '{{ c.status }}', '{{ c.start_date|default:'' }}', '{{ c.end_date|default:'' }}', `{{ c.notes|escapejs }}`)">Edit</button>
+    <form method="post" action="{% url 'control:campaign_delete' c.pk %}" style="margin:0;" onsubmit="return confirm('Delete this campaign permanently?')">
+      {% csrf_token %}<button type="submit" class="btn-del" style="font-size:12px;padding:7px 12px;">Delete</button>
+    </form>
+  </div>
+</div>
+{% empty %}
+<div style="text-align:center;padding:60px 20px;color:#bbb;">
+  <div style="font-size:40px;margin-bottom:12px;">📋</div>
+  <div>No campaigns yet. Click <strong>+ New Campaign</strong> to get started.</div>
+</div>
+{% endfor %}
+</div>
+
+<!-- ── NEW CAMPAIGN MODAL ── -->
+<div class="modal-overlay" id="modal-newCampaign" onclick="closeModalOutside(event,'newCampaign')">
+  <div class="modal">
+    <div class="modal__head">
+      <span class="modal__title">New Campaign</span>
+      <button class="modal__close" onclick="closeModal('newCampaign')">✕</button>
+    </div>
+    <div class="modal__body">
+      <form method="post" action="{% url 'control:campaign_add' %}" id="newCampaignForm">
+        {% csrf_token %}
+
+        <div class="modal__section">
+          <div class="modal__section-title">Campaign Details</div>
+          <div class="form-grid-2" style="margin-bottom:12px;">
+            <div class="form-field">
+              <label>Brand *</label>
+              <select name="brand" required>
+                <option value="">— select brand —</option>
+                {% for brand in brands %}<option value="{{ brand.pk }}">{{ brand.name }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Campaign Name *</label>
+              <input type="text" name="campaign_name" required placeholder="e.g. Summer Collection 2026">
+            </div>
+          </div>
+          <div class="form-grid-3" style="margin-bottom:12px;">
+            <div class="form-field">
+              <label>Status</label>
+              <select name="status">
+                {% for val,label in status_choices %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Start Date</label>
+              <input type="date" name="start_date">
+            </div>
+            <div class="form-field">
+              <label>End Date</label>
+              <input type="date" name="end_date">
+            </div>
+          </div>
+          <div class="form-field">
+            <label>Notes</label>
+            <textarea name="notes" rows="2" placeholder="Internal notes about this campaign…"></textarea>
+          </div>
+        </div>
+
+        <div class="modal__section">
+          <div class="modal__section-title">Deliverables</div>
+          <div id="deliverables-container"></div>
+          <button type="button" class="btn-ghost" style="font-size:12px;margin-top:4px;" onclick="addDeliverable()">+ Add Deliverable</button>
+        </div>
+
+        <div class="modal__section">
+          <div class="modal__section-title">Brand Requirements Checklist</div>
+          <div class="checklist-add-row">
+            <input type="text" id="newChecklistItem" placeholder="e.g. Use #BrandPartner, Tag @brand, Keep post live 90 days">
+            <button type="button" class="btn-ghost" style="font-size:12px;" onclick="addChecklistItem()">Add</button>
+          </div>
+          <div class="checklist-preview" id="checklistPreview"></div>
+          <div id="checklistInputs"></div>
+        </div>
+
+        <div class="modal__foot">
+          <button type="button" class="btn-ghost" onclick="closeModal('newCampaign')">Cancel</button>
+          <button type="submit" class="btn-primary">Create Campaign</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── EDIT CAMPAIGN MODAL ── -->
+<div class="modal-overlay" id="modal-editCampaign" onclick="closeModalOutside(event,'editCampaign')">
+  <div class="modal">
+    <div class="modal__head">
+      <span class="modal__title">Edit Campaign</span>
+      <button class="modal__close" onclick="closeModal('editCampaign')">✕</button>
+    </div>
+    <div class="modal__body">
+      <form method="post" id="editCampaignForm">
+        {% csrf_token %}
+        <div class="modal__section">
+          <div class="form-grid-2" style="margin-bottom:12px;">
+            <div class="form-field">
+              <label>Brand</label>
+              <select name="brand">
+                <option value="">— none —</option>
+                {% for brand in brands %}<option value="{{ brand.pk }}" id="edit-brand-opt-{{ brand.pk }}">{{ brand.name }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Campaign Name *</label>
+              <input type="text" name="campaign_name" id="editCampName" required>
+            </div>
+          </div>
+          <div class="form-grid-3" style="margin-bottom:12px;">
+            <div class="form-field">
+              <label>Status</label>
+              <select name="status" id="editCampStatus">
+                {% for val,label in status_choices %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Start Date</label>
+              <input type="date" name="start_date" id="editCampStart">
+            </div>
+            <div class="form-field">
+              <label>End Date</label>
+              <input type="date" name="end_date" id="editCampEnd">
+            </div>
+          </div>
+          <div class="form-field">
+            <label>Notes</label>
+            <textarea name="notes" id="editCampNotes" rows="2"></textarea>
+          </div>
+          {# keep payment fields as hidden with defaults so the view doesn't break #}
+          <input type="hidden" name="payment_amount" value="0">
+          <input type="hidden" name="deposit_amount" value="0">
+          <input type="hidden" name="currency" value="KES">
+          <input type="hidden" name="payment_status" value="unpaid">
+        </div>
+        <div class="modal__foot">
+          <button type="button" class="btn-ghost" onclick="closeModal('editCampaign')">Cancel</button>
+          <button type="submit" class="btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+const PLATFORM_OPTIONS = `{% for val,label in platform_choices %}<option value="{{ val }}">{{ label }}</option>{% endfor %}`;
+const CTYPE_OPTIONS    = `{% for val,label in content_type_choices %}<option value="{{ val }}">{{ label }}</option>{% endfor %}`;
+const CSRF = '{{ csrf_token }}';
+
+function openModal(id){ document.getElementById('modal-'+id).classList.add('open'); }
+function closeModal(id){ document.getElementById('modal-'+id).classList.remove('open'); }
+function closeModalOutside(e,id){ if(e.target===document.getElementById('modal-'+id)) closeModal(id); }
+
+let delCount = 0;
+function addDeliverable(){
+  delCount++;
+  const c = document.getElementById('deliverables-container');
+  const div = document.createElement('div');
+  div.className = 'del-entry';
+  div.id = 'del-'+delCount;
+  div.innerHTML = `
+    <select name="del_platform" style="width:100%;"><option value="">Platform</option>${PLATFORM_OPTIONS}</select>
+    <select name="del_content_type" style="width:100%;"><option value="">Type</option>${CTYPE_OPTIONS}</select>
+    <input type="number" name="del_quantity" min="1" value="1" placeholder="Qty" style="width:100%;">
+    <button type="button" class="del-remove" onclick="document.getElementById('del-${delCount}').remove()">✕</button>`;
+  c.appendChild(div);
+}
+
+let checklistItems = [];
+function addChecklistItem(){
+  const input = document.getElementById('newChecklistItem');
+  const val = input.value.trim();
+  if(!val) return;
+  checklistItems.push(val);
+  renderChecklist();
+  input.value = '';
+}
+document.getElementById('newChecklistItem').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ e.preventDefault(); addChecklistItem(); }
+});
+function removeChecklistItem(idx){ checklistItems.splice(idx,1); renderChecklist(); }
+function renderChecklist(){
+  document.getElementById('checklistPreview').innerHTML = checklistItems.map((item,i) =>
+    `<div class="checklist-preview-item">☐ ${item}
+      <button type="button" onclick="removeChecklistItem(${i})" style="background:none;border:none;color:#c62828;cursor:pointer;">✕</button>
+     </div>`).join('');
+  document.getElementById('checklistInputs').innerHTML = checklistItems.map(item =>
+    `<input type="hidden" name="checklist_item" value="${item.replace(/"/g,'&quot;')}">`).join('');
+}
+
+function togglePostForm(pk){
+  document.getElementById('post-form-'+pk).classList.toggle('open');
+}
+
+function togglePostEditForm(pk){
+  document.getElementById('post-edit-form-'+pk).classList.toggle('open');
+}
+
+function onEditPlatformChange(postPk){
+  const sel = document.getElementById('edit-platform-' + postPk);
+  const btn = document.getElementById('edit-fetch-btn-' + postPk);
+  if(!sel || !btn) return;
+  btn.style.display = sel.value === 'tiktok' ? '' : 'none';
+}
+
+function fetchEditStats(postPk, fetchUrl){
+  const urlInput = document.getElementById('edit-post-url-' + postPk);
+  const btn      = document.getElementById('edit-fetch-btn-' + postPk);
+  const notice   = document.getElementById('edit-csp-notice-' + postPk);
+
+  if(!urlInput || !urlInput.value.trim()){ alert('Paste a post URL first.'); return; }
+
+  btn.textContent = '…';
+  btn.disabled = true;
+  if(notice){ notice.style.display = 'none'; notice.textContent = ''; }
+
+  const fd = new FormData();
+  fd.append('post_url', urlInput.value.trim());
+  fd.append('csrfmiddlewaretoken', CSRF);
+
+  fetch(fetchUrl, { method:'POST', body:fd })
+    .then(r => {
+      if(!r.ok) return r.json().then(e => { throw new Error(e.error || r.statusText); });
+      return r.json();
+    })
+    .then(d => {
+      const hasStats = d.views || d.likes || d.comments;
+      btn.textContent = hasStats ? '✓ Done' : '⚠ Partial';
+      btn.style.background = hasStats ? '#2e7d32' : '#b45309';
+      setTimeout(() => { btn.textContent = '↻ Fetch Stats'; btn.style.background = ''; btn.disabled = false; }, 3500);
+
+      if(d.views    != null) document.getElementById('edit-views-'    + postPk).value = d.views    || 0;
+      if(d.likes    != null) document.getElementById('edit-likes-'    + postPk).value = d.likes    || 0;
+      if(d.comments != null) document.getElementById('edit-comments-' + postPk).value = d.comments || 0;
+      if(d.date)             document.getElementById('edit-date-'      + postPk).value = d.date;
+
+      if(d.error && notice){ notice.textContent = '⚠ ' + d.error; notice.style.display = 'block'; }
+    })
+    .catch(e => {
+      btn.textContent = '↻ Fetch Stats'; btn.style.background = ''; btn.disabled = false;
+      if(notice){ notice.textContent = '⚠ Could not fetch: ' + e.message; notice.style.display = 'block'; }
+    });
+}
+
+function onLogPlatformChange(campPk){
+  const sel = document.getElementById('log-platform-' + campPk);
+  const btn = document.getElementById('fetch-btn-' + campPk);
+  if(!sel || !btn) return;
+  btn.style.display = sel.value === 'tiktok' ? '' : 'none';
+}
+
+function openEditModal(pk, name, brandId, status, start, end, notes){
+  const form = document.getElementById('editCampaignForm');
+  form.action = `/{% spaceless %}{% url 'control:campaign_edit' 0 %}{% endspaceless %}`.replace('/0/', `/${pk}/`);
+  document.getElementById('editCampName').value   = name;
+  document.getElementById('editCampStatus').value = status;
+  document.getElementById('editCampStart').value  = start;
+  document.getElementById('editCampEnd').value    = end;
+  document.getElementById('editCampNotes').value  = notes;
+  const brandSel = form.querySelector('[name="brand"]');
+  if(brandSel) brandSel.value = brandId || '';
+  openModal('editCampaign');
+}
+
+/* ── Fetch stats for campaign post form ── */
+function fetchCampStats(campPk, fetchUrl){
+  const urlInput = document.getElementById('post-url-' + campPk);
+  const btn      = document.getElementById('fetch-btn-' + campPk);
+  const notice   = document.getElementById('csp-notice-' + campPk);
+  const preview  = document.getElementById('camp-stat-preview-' + campPk);
+
+  if(!urlInput || !urlInput.value.trim()){ alert('Paste a post URL first.'); return; }
+
+  btn.textContent = '…';
+  btn.disabled = true;
+  if(notice){ notice.style.display = 'none'; notice.textContent = ''; }
+
+  const fd = new FormData();
+  fd.append('post_url', urlInput.value.trim());
+  fd.append('csrfmiddlewaretoken', CSRF);
+
+  fetch(fetchUrl, { method:'POST', body:fd })
+    .then(r => {
+      if(!r.ok) return r.json().then(e => { throw new Error(e.error || r.statusText); });
+      return r.json();
+    })
+    .then(d => {
+      const hasStats = d.views || d.likes || d.comments;
+
+      // Button feedback
+      if(hasStats){
+        btn.textContent = '✓ Done';
+        btn.style.background = '#2e7d32';
+      } else {
+        btn.textContent = '⚠ Partial';
+        btn.style.background = '#b45309';
+      }
+      setTimeout(() => {
+        btn.textContent = '↻ Fetch Stats';
+        btn.style.background = '';
+        btn.disabled = false;
+      }, 3500);
+
+      // Populate preview row (always show it)
+      const fmt = n => (n != null && n !== 0) ? n.toLocaleString() : '—';
+      document.getElementById('csp-views-'    + campPk).textContent = fmt(d.views);
+      document.getElementById('csp-likes-'    + campPk).textContent = fmt(d.likes);
+      document.getElementById('csp-comments-' + campPk).textContent = fmt(d.comments);
+      document.getElementById('csp-date-'     + campPk).textContent = d.date || '—';
+      const authorEl = document.getElementById('csp-author-' + campPk);
+      if(authorEl) authorEl.textContent = d.author || '—';
+      preview.classList.add('visible');
+
+      // Populate hidden inputs for form submit
+      document.getElementById('csp-h-views-'    + campPk).value = d.views    || 0;
+      document.getElementById('csp-h-likes-'    + campPk).value = d.likes    || 0;
+      document.getElementById('csp-h-comments-' + campPk).value = d.comments || 0;
+      if(d.date) document.getElementById('csp-h-date-' + campPk).value = d.date;
+
+      // Show inline notice if stats are unavailable (Instagram/Facebook limits)
+      if(d.error && notice){
+        notice.textContent = '⚠ ' + d.error;
+        notice.style.display = 'block';
+      }
+    })
+    .catch(e => {
+      btn.textContent = '↻ Fetch Stats';
+      btn.style.background = '';
+      btn.disabled = false;
+      if(notice){
+        notice.textContent = '⚠ Could not fetch: ' + e.message;
+        notice.style.display = 'block';
+      }
+    });
+}
+</script>
+{% endblock %}

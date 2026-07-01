@@ -1,0 +1,33 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Login - Kesley</title>
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<link rel="stylesheet" href="{% static 'css/control.css' %}">
+</head>
+<body class="control-login">
+  <div class="login-card">
+    <div class="admin-logo">KESLEY<span class="dot">.</span></div>
+    <h1>Control Panel</h1>
+    <form method="post" class="login-form">
+      {% csrf_token %}
+      <div class="form-row">
+        <label for="username">Username</label>
+        <input type="text" name="username" id="username" required autofocus>
+      </div>
+      <div class="form-row">
+        <label for="password">Password</label>
+        <input type="password" name="password" id="password" required>
+      </div>
+      <button type="submit" class="login-btn">Sign In →</button>
+      {% if form.errors %}
+      <div class="error-msg">Invalid credentials. Please try again.</div>
+      {% endif %}
+    </form>
+    <p class="note">Kesley · Control Panel</p>
+  </div>
+</body>
+</html>

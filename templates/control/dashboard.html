@@ -1,0 +1,24 @@
+{% extends 'control/base.html' %}
+{% block title %}Dashboard - Control Panel{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-number">{{ stats.brands_count }}</div>
+      <div class="stat-label">Brands</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ stats.categories_count }}</div>
+      <div class="stat-label">Categories</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ stats.items_count }}</div>
+      <div class="stat-label">Work Items</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ stats.contacts_new }}</div>
+      <div class="stat-label">New Contacts</div>
+    </div>
+  </div>
+{% endblock %}

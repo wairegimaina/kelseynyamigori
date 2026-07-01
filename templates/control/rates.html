@@ -1,0 +1,113 @@
+{% extends 'control/base.html' %}
+{% block title %}Rates - Control Panel{% endblock %}
+{% block page_title %}Rate Card{% endblock %}
+
+{% block content %}
+    {% if messages %}
+    <ul class="messages">
+      {% for msg in messages %}
+      <li class="{{ msg.tags }}">{{ msg }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <!-- RATE ITEMS -->
+    <h2>Rate Items</h2>
+    <div class="add-card">
+      <form method="post" action="{% url 'control:rate_item_add' %}">
+        {% csrf_token %}
+        <div class="form-grid">
+          <input type="text" name="deliverable" placeholder="Deliverable (e.g. Reel)" required>
+          <input type="text" name="platform"    placeholder="Platform (e.g. Instagram)">
+          <input type="text" name="starting_price" placeholder="Price (e.g. KSh 25,000)" required>
+        </div>
+        <button type="submit" class="btn-add">+ Add Rate Item</button>
+      </form>
+    </div>
+
+    <div class="rate-table">
+      <div class="rate-row rate-row--item rate-row--head">
+        <div class="rate-cell">Deliverable</div>
+        <div class="rate-cell">Platform</div>
+        <div class="rate-cell">Starting price</div>
+        <div class="rate-cell actions"></div>
+      </div>
+
+      {% for item in rate_items %}
+      <div class="rate-row rate-row--item" id="item-row-{{ item.pk }}">
+        <div class="rate-cell">{{ item.deliverable }}</div>
+        <div class="rate-cell">{{ item.platform }}</div>
+        <div class="rate-cell">{{ item.starting_price }}</div>
+        <div class="rate-cell actions">
+          <button class="btn-edit" onclick="toggleEdit('item', {{ item.pk }})">Edit</button>
+          <form method="post" action="{% url 'control:rate_item_delete' item.pk %}" style="margin:0;" onsubmit="return confirm('Delete this rate item?')">
+            {% csrf_token %}
+            <button type="submit" class="btn-del">Delete</button>
+          </form>
+        </div>
+      </div>
+      <div class="edit-row edit-row--item" id="item-edit-{{ item.pk }}">
+        <form method="post" action="{% url 'control:rate_item_edit' item.pk %}" style="display:contents;">
+          {% csrf_token %}
+          <div class="edit-cell"><input type="text" name="deliverable"    value="{{ item.deliverable }}" required></div>
+          <div class="edit-cell"><input type="text" name="platform"       value="{{ item.platform }}"></div>
+          <div class="edit-cell"><input type="text" name="starting_price" value="{{ item.starting_price }}" required></div>
+          <div class="edit-cell">
+            <button type="submit" class="btn-save">Save</button>
+            <button type="button" class="btn-cancel" onclick="toggleEdit('item', {{ item.pk }})">Cancel</button>
+          </div>
+        </form>
+      </div>
+      {% empty %}
+      <div class="empty-note">No rate items yet — add one above.</div>
+      {% endfor %}
+    </div>
+
+    <!-- RATE ADD-ONS -->
+    <h2 style="margin-top: 48px;">Rate Add-ons</h2>
+    <div class="add-card">
+      <form method="post" action="{% url 'control:rate_addon_add' %}">
+        {% csrf_token %}
+        <div class="form-grid-2">
+          <input type="text" name="title" placeholder="Add-on title (e.g. Rush delivery)" required>
+          <input type="text" name="description" placeholder="Short description / pricing note" required>
+        </div>
+        <button type="submit" class="btn-add">+ Add Add-on</button>
+      </form>
+    </div>
+
+    <div class="rate-table">
+      <div class="rate-row rate-row--addon rate-row--head">
+        <div class="rate-cell">Title</div>
+        <div class="rate-cell">Description</div>
+        <div class="rate-cell actions"></div>
+      </div>
+
+      {% for addon in rate_addons %}
+      <div class="rate-row rate-row--addon" id="addon-row-{{ addon.pk }}">
+        <div class="rate-cell"><strong>{{ addon.title }}</strong></div>
+        <div class="rate-cell">{{ addon.description }}</div>
+        <div class="rate-cell actions">
+          <button class="btn-edit" onclick="toggleEdit('addon', {{ addon.pk }})">Edit</button>
+          <form method="post" action="{% url 'control:rate_addon_delete' addon.pk %}" style="margin:0;" onsubmit="return confirm('Delete this add-on?')">
+            {% csrf_token %}
+            <button type="submit" class="btn-del">Delete</button>
+          </form>
+        </div>
+      </div>
+      <div class="edit-row edit-row--addon" id="addon-edit-{{ addon.pk }}">
+        <form method="post" action="{% url 'control:rate_addon_edit' addon.pk %}" style="display:contents;">
+          {% csrf_token %}
+          <div class="edit-cell"><input type="text" name="title"       value="{{ addon.title }}" required></div>
+          <div class="edit-cell"><input type="text" name="description" value="{{ addon.description }}" required></div>
+          <div class="edit-cell">
+            <button type="submit" class="btn-save">Save</button>
+            <button type="button" class="btn-cancel" onclick="toggleEdit('addon', {{ addon.pk }})">Cancel</button>
+          </div>
+        </form>
+      </div>
+      {% empty %}
+      <div class="empty-note">No add-ons yet — add one above.</div>
+      {% endfor %}
+    </div>
+{% endblock %}

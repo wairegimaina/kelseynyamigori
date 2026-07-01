@@ -1,0 +1,13 @@
+<div class="profile-section">
+  <p class="profile-section-title">Hero Image</p>
+
+  {% if profile.hero_image %}
+  <img src="{{ profile.hero_image.url }}" alt="Current hero image" class="hero-preview">
+  <p class="hint" style="margin-bottom:14px;">Current image — upload a new file below to replace it.</p>
+  {% endif %}
+
+  <div class="fg">
+    <label for="hero_image">Upload new image <span style="font-weight:400;text-transform:none;">(max 4 MB · JPG or PNG)</span></label>
+    <input type="file" id="hero_image" name="hero_image" accept="image/*">
+  </div>
+</div>

@@ -1,0 +1,55 @@
+from django.urls import path
+from . import views
+
+app_name = "control"
+
+urlpatterns = [
+    path("", views.dashboard, name="dashboard"),
+    path("login/", views.login_view, name="login"),
+    path("logout/", views.logout_view, name="logout"),
+    path("profile/", views.profile_edit, name="profile_edit"),
+    path("images/", views.images_list, name="images_list"),
+    path("images/<int:pk>/edit/", views.image_edit, name="image_edit"),
+    path("images/<int:pk>/delete/", views.image_delete, name="image_delete"),
+    path("brands/", views.brands_list, name="brands_list"),
+    path("brands/<int:pk>/edit/", views.brand_edit, name="brand_edit"),
+    path("brands/<int:pk>/delete/", views.brand_delete, name="brand_delete"),
+    path("work/", views.work_categories, name="work_categories"),
+    path("work/category/add/", views.work_add_category, name="work_add_category"),
+    path("work/category/<int:pk>/edit/", views.work_edit_category, name="work_edit_category"),
+    path("work/category/<int:pk>/delete/", views.work_delete_category, name="work_delete_category"),
+    path("work/category/<int:cat_pk>/add-item/", views.work_add_item, name="work_add_item"),
+    path("work/item/<int:pk>/edit/", views.work_edit_item, name="work_edit_item"),
+    path("work/item/<int:pk>/delete/", views.work_delete_item, name="work_delete_item"),
+    path(
+        "work/item/<int:pk>/clear-video/", views.work_clear_item_video, name="work_clear_item_video"
+    ),
+    path("work/item/<int:pk>/reorder/", views.work_reorder_item, name="work_reorder_item"),
+    path("work/fetch-stats/", views.work_fetch_stats, name="work_fetch_stats"),
+    path("social/", views.social_handles, name="social_handles"),
+    path("social/<int:pk>/edit/", views.social_edit, name="social_edit"),
+    path("social/<int:pk>/delete/", views.social_delete, name="social_delete"),
+    path("rates/", views.rates_list, name="rates_list"),
+    path("rates/item/add/", views.rate_item_add, name="rate_item_add"),
+    path("rates/item/<int:pk>/edit/", views.rate_item_edit, name="rate_item_edit"),
+    path("rates/item/<int:pk>/delete/", views.rate_item_delete, name="rate_item_delete"),
+    path("rates/addon/add/", views.rate_addon_add, name="rate_addon_add"),
+    path("rates/addon/<int:pk>/edit/", views.rate_addon_edit, name="rate_addon_edit"),
+    path("rates/addon/<int:pk>/delete/", views.rate_addon_delete, name="rate_addon_delete"),
+    path("contacts/", views.contacts_list, name="contacts_list"),
+    path("contacts/add/", views.contact_add, name="contact_add"),
+    path("contacts/<int:pk>/edit/", views.contact_edit, name="contact_edit"),
+    path("contacts/<int:pk>/delete/", views.contact_delete, name="contact_delete"),
+    # Campaigns
+    path("campaigns/", views.campaigns_list, name="campaigns_list"),
+    path("campaigns/add/", views.campaign_add, name="campaign_add"),
+    path("campaigns/<int:pk>/edit/", views.campaign_edit, name="campaign_edit"),
+    path("campaigns/<int:pk>/delete/", views.campaign_delete, name="campaign_delete"),
+    path("campaigns/<int:pk>/post/add/", views.campaign_post_add, name="campaign_post_add"),
+    path("campaigns/post/<int:pk>/edit/", views.campaign_post_edit, name="campaign_post_edit"),
+    path("campaigns/post/<int:pk>/delete/", views.campaign_post_delete, name="campaign_post_delete"),
+    path("campaigns/checklist/<int:pk>/toggle/", views.campaign_checklist_toggle, name="campaign_checklist_toggle"),
+    path("campaigns/deliverable/<int:pk>/delete/", views.campaign_deliverable_delete, name="campaign_deliverable_delete"),
+    path("campaigns/<int:pk>/report/", views.campaign_report_download, name="campaign_report_download"),
+    path("campaigns/fetch-stats/", views.campaign_fetch_stats, name="campaign_fetch_stats"),
+]

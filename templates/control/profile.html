@@ -1,0 +1,34 @@
+{% extends 'control/base.html' %}
+{% block title %}Profile - Control Panel{% endblock %}
+{% block page_title %}Site Profile{% endblock %}
+
+{% block content %}
+    {% if messages %}
+      {% for message in messages %}
+      <div class="flash {{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <!-- 1. Identity -->
+      {% include 'control/partials/profile_identity.html' %}
+
+      <!-- 2. Bio -->
+      {% include 'control/partials/profile_bio.html' %}
+
+      <!-- 3. Contact -->
+      {% include 'control/partials/profile_contact.html' %}
+
+      <!-- 4. Hero Image -->
+      {% include 'control/partials/profile_hero.html' %}
+
+      <!-- 5. Footer -->
+      {% include 'control/partials/profile_footer.html' %}
+
+      <div class="submit-bar">
+        <button type="submit" class="submit-btn">Save changes →</button>
+      </div>
+    </form>
+{% endblock %}

@@ -1,0 +1,11 @@
+Django>=5.0,<6.0
+psycopg2-binary
+python-dotenv
+whitenoise[brotli]
+cloudinary
+django-cloudinary-storage
+gunicorn
+requests
+Pillow
+reportlab
+#CLOUDINARY_account & render = cirqen@gmail.com
