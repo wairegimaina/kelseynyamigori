@@ -186,14 +186,12 @@
                     <span class="fact-value">{% for s in all_socials %}{{ s.get_platform_display }}{% if not forloop.last %} · {% endif %}{% endfor %}</span>
                 </div>
                 {% endif %}
-                {% for stat in stats %}
-                {% if forloop.first %}
+
+                <!-- Fixed Community Card to cleanly output direct total follower count -->
                 <div class="fact fact--card fact--accent">
                     <span class="fact-label">Community</span>
-                    <span class="fact-value">{{ stat.value }}{{ stat.suffix }}{% if '+' not in stat.suffix %}+{% endif %} followers</span>
+                    <span class="fact-value">{{ total_reach_display }} followers</span>
                 </div>
-                {% endif %}
-                {% endfor %}
             </div>
             {% endif %}
         </section>

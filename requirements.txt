@@ -10,5 +10,5 @@ Pillow
 reportlab
 #CLOUDINARY_account & render = cirqen@gmail.com
 #pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
-#gunicorn maryann_site.wsgi:application --timeout 120 --workers 1 --threads 2
-#https://kesley.onrender.com/1dfd9aef-8e38-4fc5-a8df-16e467dec5c1
+#gunicorn kesley_site.wsgi:application --timeout 120 --workers 1 --threads 2
+#https://kelseynyamigori.onrender.com/1dfd9aef-8e38-4fc5-a8df-16e467dec5c1
