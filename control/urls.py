@@ -52,4 +52,8 @@ urlpatterns = [
     path("campaigns/deliverable/<int:pk>/delete/", views.campaign_deliverable_delete, name="campaign_deliverable_delete"),
     path("campaigns/<int:pk>/report/", views.campaign_report_download, name="campaign_report_download"),
     path("campaigns/fetch-stats/", views.campaign_fetch_stats, name="campaign_fetch_stats"),
+    # TikTok weekly progress reports (all campaigns, TikTok only)
+    path("campaigns/tiktok-weekly/", views.tiktok_weekly_report, name="tiktok_weekly_report"),
+    path("campaigns/tiktok-weekly/pdf/", views.tiktok_weekly_report_pdf, name="tiktok_weekly_report_pdf"),
+    path("campaigns/tiktok-weekly/refresh/", views.tiktok_weekly_refresh_stats, name="tiktok_weekly_refresh_stats"),
 ]

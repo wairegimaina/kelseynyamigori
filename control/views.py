@@ -1200,3 +1200,415 @@ def campaign_report_download(request, pk):
     response = HttpResponse(buffer, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{safe_name}_report.pdf"'
     return response
+
+
+# ── TikTok Weekly Progress Reports ──────────────────────────────
+# TikTok is the only platform with automatic stat fetching (stat_fetcher.py),
+# so this report focuses on TikTok posts only, broken into weekly buckets
+# across a chosen calendar month, aggregated across ALL campaigns.
+
+from calendar import monthrange
+from collections import OrderedDict
+
+
+def _month_weeks(year, month):
+    """
+    Split a calendar month into week buckets of at most 7 days,
+    starting at day 1 (Week 1 = 1st-7th, Week 2 = 8th-14th, ...).
+    Returns a list of (week_number, start_date, end_date) tuples.
+    """
+    days_in_month = monthrange(year, month)[1]
+    weeks = []
+    day = 1
+    week_num = 1
+    while day <= days_in_month:
+        end_day = min(day + 6, days_in_month)
+        weeks.append((week_num, date(year, month, day), date(year, month, end_day)))
+        day = end_day + 1
+        week_num += 1
+    return weeks
+
+
+def _tiktok_weekly_data(year, month):
+    """
+    Build week-by-week TikTok progress data for the given month, aggregated
+    across every campaign. Returns weekly rows (with week-over-week deltas),
+    month totals, and a per-campaign breakdown.
+    """
+    weeks = _month_weeks(year, month)
+    month_start = date(year, month, 1)
+    month_end = date(year, month, monthrange(year, month)[1])
+
+    posts = list(
+        CampaignPost.objects.filter(
+            platform="tiktok",
+            posting_date__gte=month_start,
+            posting_date__lte=month_end,
+        )
+        .select_related("campaign", "campaign__brand")
+        .order_by("posting_date")
+    )
+    undated_count = CampaignPost.objects.filter(
+        platform="tiktok", posting_date__isnull=True
+    ).count()
+
+    week_rows = []
+    prev_totals = None
+    for week_num, start, end in weeks:
+        wk_posts = [p for p in posts if start <= p.posting_date <= end]
+        views = sum(p.views for p in wk_posts)
+        likes = sum(p.likes for p in wk_posts)
+        comments = sum(p.comments for p in wk_posts)
+        count = len(wk_posts)
+        engagement = round((likes + comments) / views * 100, 1) if views else 0
+
+        deltas = {}
+        if prev_totals is not None:
+            for key, cur in (("views", views), ("likes", likes), ("comments", comments), ("count", count)):
+                prev = prev_totals[key]
+                deltas[key] = round((cur - prev) / prev * 100, 1) if prev else None
+        week_rows.append({
+            "week_num": week_num,
+            "start": start,
+            "end": end,
+            "posts": wk_posts,
+            "count": count,
+            "views": views,
+            "likes": likes,
+            "comments": comments,
+            "engagement_rate": engagement,
+            "deltas": deltas,
+        })
+        prev_totals = {"views": views, "likes": likes, "comments": comments, "count": count}
+
+    totals = {
+        "count": sum(w["count"] for w in week_rows),
+        "views": sum(w["views"] for w in week_rows),
+        "likes": sum(w["likes"] for w in week_rows),
+        "comments": sum(w["comments"] for w in week_rows),
+    }
+    totals["engagement_rate"] = (
+        round((totals["likes"] + totals["comments"]) / totals["views"] * 100, 1)
+        if totals["views"] else 0
+    )
+
+    campaign_totals = OrderedDict()
+    for p in posts:
+        key = p.campaign_id
+        if key not in campaign_totals:
+            campaign_totals[key] = {
+                "campaign": p.campaign, "count": 0, "views": 0, "likes": 0, "comments": 0,
+            }
+        ct = campaign_totals[key]
+        ct["count"] += 1
+        ct["views"] += p.views
+        ct["likes"] += p.likes
+        ct["comments"] += p.comments
+
+    return {
+        "year": year,
+        "month": month,
+        "month_label": date(year, month, 1).strftime("%B %Y"),
+        "weeks": week_rows,
+        "totals": totals,
+        "campaign_breakdown": list(campaign_totals.values()),
+        "undated_count": undated_count,
+    }
+
+
+def refresh_tiktok_stats_for_posts(posts):
+    """
+    Re-fetch live stats for a queryset/list of TikTok CampaignPosts and
+    persist the results. Shared by the manual 'Refresh' button and the
+    scheduled management command. Returns a summary dict.
+    """
+    from core.stat_fetcher import fetch_post_stats
+
+    updated, failed, skipped = 0, 0, 0
+    for post in posts:
+        if not post.post_url:
+            skipped += 1
+            continue
+        stats = fetch_post_stats(post.post_url)
+        if stats.get("views") is None:
+            failed += 1
+            continue
+        post.views = stats.get("views") or post.views
+        post.likes = stats.get("likes") or post.likes
+        post.comments = stats.get("comments") or post.comments
+        post.save(update_fields=["views", "likes", "comments"])
+        updated += 1
+    return {"updated": updated, "failed": failed, "skipped": skipped}
+
+
+@login_required
+@require_POST
+def tiktok_weekly_refresh_stats(request):
+    """
+    Manual 'Refresh TikTok Stats' button on the weekly report page.
+    Re-pulls live stats for every TikTok post posted within the selected
+    month (across all campaigns) before the report is viewed/downloaded.
+    """
+    year, month = _parse_month_param(request)
+    month_start = date(year, month, 1)
+    month_end = date(year, month, monthrange(year, month)[1])
+
+    posts = CampaignPost.objects.filter(
+        platform="tiktok",
+        posting_date__gte=month_start,
+        posting_date__lte=month_end,
+    )
+    summary = refresh_tiktok_stats_for_posts(posts)
+
+    if summary["updated"]:
+        messages.success(
+            request,
+            f"Refreshed {summary['updated']} TikTok post(s)."
+            + (f" {summary['failed']} couldn't be fetched (TikTok may be blocking automated access)." if summary["failed"] else "")
+        )
+    elif summary["failed"]:
+        messages.warning(request, f"Couldn't fetch fresh stats for {summary['failed']} post(s). Try again shortly.")
+    else:
+        messages.info(request, "No TikTok posts with links to refresh in this month.")
+
+    from django.urls import reverse
+    return redirect(f"{reverse('control:tiktok_weekly_report')}?month={year:04d}-{month:02d}")
+
+
+def _parse_month_param(request):
+    raw = request.GET.get("month", "").strip()
+    today = date.today()
+    if raw:
+        try:
+            year_s, month_s = raw.split("-")
+            year, month = int(year_s), int(month_s)
+            if 1 <= month <= 12:
+                return year, month
+        except (ValueError, AttributeError):
+            pass
+    return today.year, today.month
+
+
+@login_required
+def tiktok_weekly_report(request):
+    """Dashboard page — week-by-week TikTok progress across all campaigns for a chosen month."""
+    year, month = _parse_month_param(request)
+    data = _tiktok_weekly_data(year, month)
+
+    prev_month = month - 1 or 12
+    prev_year = year - 1 if month == 1 else year
+    next_month = month + 1 if month < 12 else 1
+    next_year = year + 1 if month == 12 else year
+
+    return render(request, "control/tiktok_weekly.html", {
+        **data,
+        "prev_month_param": f"{prev_year:04d}-{prev_month:02d}",
+        "next_month_param": f"{next_year:04d}-{next_month:02d}",
+        "selected_month_param": f"{year:04d}-{month:02d}",
+        "is_current_month": (year, month) == (date.today().year, date.today().month),
+    })
+
+
+@login_required
+def tiktok_weekly_report_pdf(request):
+    """Same data as tiktok_weekly_report, rendered as a downloadable PDF."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+    import io
+
+    year, month = _parse_month_param(request)
+    data = _tiktok_weekly_data(year, month)
+
+    from core.models import SiteProfile
+    _profile = SiteProfile.objects.filter(pk=1).first()
+    creator_name = _profile.display_name if _profile else "Creator"
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        rightMargin=18 * mm, leftMargin=18 * mm, topMargin=18 * mm, bottomMargin=18 * mm,
+        title=f"TikTok Weekly Report — {data['month_label']}",
+    )
+    W = A4[0] - 36 * mm
+
+    C_WHITE = colors.HexColor("#ffffff")
+    C_ACCENT = colors.HexColor("#010101")   # TikTok black
+    C_PINK = colors.HexColor("#fe2c55")     # TikTok accent
+    C_LIGHT = colors.HexColor("#f5f5f7")
+    C_MID = colors.HexColor("#e0e0e8")
+    C_GREEN = colors.HexColor("#2e7d32")
+    C_RED = colors.HexColor("#c62828")
+    C_BLACK = colors.HexColor("#111111")
+
+    styles = getSampleStyleSheet()
+
+    def sty(name, **kw):
+        base = styles.get(name, styles["Normal"])
+        return ParagraphStyle(f"custom_{id(kw)}", parent=base, **kw)
+
+    H1 = sty("Normal", fontSize=20, fontName="Helvetica-Bold", textColor=C_WHITE)
+    H2 = sty("Normal", fontSize=11, fontName="Helvetica-Bold", textColor=C_BLACK, spaceBefore=10, spaceAfter=4)
+    LABEL = sty("Normal", fontSize=8, fontName="Helvetica", textColor=colors.HexColor("#666666"))
+    VALUE = sty("Normal", fontSize=14, fontName="Helvetica-Bold", textColor=C_BLACK, alignment=TA_CENTER)
+    SMALL = sty("Normal", fontSize=8, fontName="Helvetica", textColor=colors.HexColor("#444444"))
+    NUM_S = sty("Normal", fontSize=9, fontName="Helvetica-Bold", textColor=C_BLACK, alignment=TA_CENTER)
+    DELTA_UP = sty("Normal", fontSize=8, fontName="Helvetica-Bold", textColor=C_GREEN, alignment=TA_CENTER)
+    DELTA_DOWN = sty("Normal", fontSize=8, fontName="Helvetica-Bold", textColor=C_RED, alignment=TA_CENTER)
+    DELTA_FLAT = sty("Normal", fontSize=8, alignment=TA_CENTER, textColor=colors.HexColor("#999999"))
+
+    story = []
+
+    header_data = [[
+        Paragraph(
+            f"<b>TikTok Weekly Report</b><br/><font size=9 color=#dddddd>{data['month_label']}</font>",
+            H1,
+        ),
+        Paragraph(
+            f"<font size=7.5 color=#aaaaaa>Creator</font><br/><b><font color=#ffffff>{creator_name}</font></b>",
+            sty("Normal", fontSize=12, fontName="Helvetica-Bold", alignment=TA_RIGHT, leading=17),
+        ),
+    ]]
+    header_table = Table(header_data, colWidths=[W * 0.65, W * 0.35])
+    header_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), C_ACCENT),
+        ("TOPPADDING", (0, 0), (-1, -1), 14),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 14),
+        ("LEFTPADDING", (0, 0), (-1, -1), 14),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 14),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    story.append(header_table)
+    story.append(Table([[""]], colWidths=[W], rowHeights=[3],
+                        style=TableStyle([("BACKGROUND", (0, 0), (-1, -1), C_PINK)])))
+    story.append(Spacer(1, 12))
+
+    # Month totals
+    story.append(Paragraph("MONTH TOTALS (TIKTOK ONLY)", H2))
+    story.append(HRFlowable(width=W, thickness=0.5, color=C_MID))
+    story.append(Spacer(1, 4))
+    t = data["totals"]
+    totals_data = [
+        [Paragraph("POSTS", LABEL), Paragraph("VIEWS", LABEL), Paragraph("LIKES", LABEL),
+         Paragraph("COMMENTS", LABEL), Paragraph("ENGAGEMENT", LABEL)],
+        [Paragraph(f"{t['count']}", VALUE), Paragraph(f"{t['views']:,}", VALUE),
+         Paragraph(f"{t['likes']:,}", VALUE), Paragraph(f"{t['comments']:,}", VALUE),
+         Paragraph(f"{t['engagement_rate']}%", VALUE)],
+    ]
+    tot_t = Table(totals_data, colWidths=[W / 5] * 5)
+    tot_t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), C_LIGHT),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("GRID", (0, 0), (-1, -1), 0.4, C_MID),
+    ]))
+    story.append(tot_t)
+    story.append(Spacer(1, 14))
+
+    # Week-by-week table
+    story.append(Paragraph("WEEK-BY-WEEK PROGRESS", H2))
+    story.append(HRFlowable(width=W, thickness=0.5, color=C_MID))
+    story.append(Spacer(1, 4))
+
+    def _delta_para(val):
+        if val is None:
+            return Paragraph("—", DELTA_FLAT)
+        arrow = "▲" if val >= 0 else "▼"
+        style = DELTA_UP if val >= 0 else DELTA_DOWN
+        return Paragraph(f"{arrow} {abs(val)}%", style)
+
+    _HDR = lambda txt: Paragraph(txt, sty("Normal", fontSize=7.5, fontName="Helvetica-Bold",
+                                           textColor=C_WHITE, alignment=TA_CENTER))
+    wk_data = [[
+        _HDR("WEEK"), _HDR("DATES"), _HDR("POSTS"), _HDR("VIEWS"), _HDR("Δ"),
+        _HDR("LIKES"), _HDR("Δ"), _HDR("COMMENTS"), _HDR("Δ"), _HDR("ENG. RATE"),
+    ]]
+    for w in data["weeks"]:
+        d = w["deltas"]
+        wk_data.append([
+            Paragraph(f"Week {w['week_num']}", sty("Normal", fontSize=8, fontName="Helvetica-Bold", alignment=TA_CENTER)),
+            Paragraph(f"{w['start'].strftime('%d %b')}–{w['end'].strftime('%d %b')}",
+                      sty("Normal", fontSize=7.5, alignment=TA_CENTER)),
+            Paragraph(str(w["count"]), NUM_S),
+            Paragraph(f"{w['views']:,}", NUM_S),
+            _delta_para(d.get("views")),
+            Paragraph(f"{w['likes']:,}", NUM_S),
+            _delta_para(d.get("likes")),
+            Paragraph(f"{w['comments']:,}", NUM_S),
+            _delta_para(d.get("comments")),
+            Paragraph(f"{w['engagement_rate']}%", NUM_S),
+        ])
+    col_w = [W * 0.10, W * 0.15, W * 0.08, W * 0.11, W * 0.07, W * 0.10, W * 0.07, W * 0.11, W * 0.07, W * 0.14]
+    wk_t = Table(wk_data, colWidths=col_w)
+    wk_t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), C_ACCENT),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [C_WHITE, C_LIGHT]),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("GRID", (0, 0), (-1, -1), 0.4, C_MID),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    story.append(wk_t)
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(
+        "Δ = change vs. the previous week in this month. Week 1 has no baseline to compare against.",
+        sty("Normal", fontSize=7, textColor=colors.HexColor("#888888")),
+    ))
+    story.append(Spacer(1, 14))
+
+    # Per-campaign breakdown
+    if data["campaign_breakdown"]:
+        story.append(Paragraph("BY CAMPAIGN (TIKTOK, THIS MONTH)", H2))
+        story.append(HRFlowable(width=W, thickness=0.5, color=C_MID))
+        story.append(Spacer(1, 4))
+        cb_data = [[
+            _HDR("CAMPAIGN"), _HDR("BRAND"), _HDR("POSTS"), _HDR("VIEWS"), _HDR("LIKES"), _HDR("COMMENTS"),
+        ]]
+        for c in data["campaign_breakdown"]:
+            camp = c["campaign"]
+            brand_name = camp.brand.name if camp and camp.brand else "—"
+            cb_data.append([
+                Paragraph(camp.campaign_name if camp else "(deleted campaign)", SMALL),
+                Paragraph(brand_name, SMALL),
+                Paragraph(str(c["count"]), NUM_S),
+                Paragraph(f"{c['views']:,}", NUM_S),
+                Paragraph(f"{c['likes']:,}", NUM_S),
+                Paragraph(f"{c['comments']:,}", NUM_S),
+            ])
+        cb_t = Table(cb_data, colWidths=[W * 0.28, W * 0.22, W * 0.12, W * 0.14, W * 0.12, W * 0.12])
+        cb_t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), C_ACCENT),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [C_WHITE, C_LIGHT]),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("GRID", (0, 0), (-1, -1), 0.4, C_MID),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ]))
+        story.append(cb_t)
+        story.append(Spacer(1, 10))
+
+    if data["undated_count"]:
+        story.append(Paragraph(
+            f"Note: {data['undated_count']} TikTok post(s) across all time have no posting date set, "
+            "so they can't be placed in a week and are excluded from every weekly report.",
+            sty("Normal", fontSize=7.5, textColor=C_RED),
+        ))
+        story.append(Spacer(1, 8))
+
+    story.append(Spacer(1, 6))
+    story.append(HRFlowable(width=W, thickness=0.5, color=C_MID))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(
+        f"Generated {date.today().strftime('%d %B %Y')} &nbsp;·&nbsp; {creator_name} TikTok Weekly Report",
+        sty("Normal", fontSize=7.5, textColor=colors.HexColor("#999999"), alignment=TA_CENTER),
+    ))
+
+    doc.build(story)
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="tiktok_weekly_{year:04d}-{month:02d}.pdf"'
+    return response
