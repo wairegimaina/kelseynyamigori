@@ -212,29 +212,36 @@
     </div>
   </div>
 
-  <div class="tw-subhead">Posts</div>
-  <div class="card">
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>Date</th><th>Views</th><th>Likes</th><th>Comments</th><th>Post URL</th></tr>
-        </thead>
-        <tbody>
-          {% for p in sec.posts %}
-          <tr>
-            <td>{{ p.effective_date|date:"d M Y" }}{% if p.date_is_estimated %}<span class="tw-est">*</span>{% endif %}</td>
-            <td>{{ p.views }}</td>
-            <td>{{ p.likes }}</td>
-            <td>{{ p.comments }}</td>
-            <td>{% if p.post_url %}<a href="{{ p.post_url }}" target="_blank" rel="noopener">{{ p.post_url|truncatechars:40 }}</a>{% else %}—{% endif %}</td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="5">No posts this month.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+  <div class="tw-subhead">Posts by Week</div>
+  {% if sec.totals.count %}
+    {% for w in sec.weeks %}
+      {% if w.posts %}
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-title">Week {{ w.week_num }} — {{ w.start|date:"d M" }} – {{ w.end|date:"d M" }} ({{ w.count }} post{{ w.count|pluralize }})</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Date</th><th>Views</th><th>Likes</th><th>Comments</th><th>Post URL</th></tr>
+            </thead>
+            <tbody>
+              {% for p in w.posts %}
+              <tr>
+                <td>{{ p.effective_date|date:"d M Y" }}{% if p.date_is_estimated %}<span class="tw-est">*</span>{% endif %}</td>
+                <td>{{ p.views }}</td>
+                <td>{{ p.likes }}</td>
+                <td>{{ p.comments }}</td>
+                <td>{% if p.post_url %}<a href="{{ p.post_url }}" target="_blank" rel="noopener">{{ p.post_url|truncatechars:40 }}</a>{% else %}—{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+  {% else %}
+    <div class="card"><p>No posts this month.</p></div>
+  {% endif %}
 </div>
 {% empty %}
 <div class="card tw-section">

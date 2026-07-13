@@ -1664,9 +1664,18 @@ def _build_tiktok_weekly_pdf(year, month):
             story.append(_week_table(sec["weeks"]))
             story.append(Spacer(1, 10))
 
-            if sec["posts"]:
-                story.append(Paragraph("Posts", sty("Normal", fontSize=9.5, fontName="Helvetica-Bold", textColor=colors.HexColor("#666"), spaceAfter=3)))
-                story.append(_post_table(sec["posts"]))
+            story.append(Paragraph("Posts by Week", sty("Normal", fontSize=9.5, fontName="Helvetica-Bold", textColor=colors.HexColor("#666"), spaceAfter=3)))
+            if sec["totals"]["count"]:
+                for w in sec["weeks"]:
+                    if not w["posts"]:
+                        continue
+                    story.append(Paragraph(
+                        f"Week {w['week_num']} — {w['start'].strftime('%d %b')}–{w['end'].strftime('%d %b')} "
+                        f"({w['count']} post{'s' if w['count'] != 1 else ''})",
+                        sty("Normal", fontSize=8.5, fontName="Helvetica-Bold", textColor=colors.HexColor("#888"), spaceBefore=6, spaceAfter=3),
+                    ))
+                    story.append(_post_table(w["posts"]))
+                    story.append(Spacer(1, 6))
             else:
                 story.append(Paragraph("No posts this month.", SMALL))
 
