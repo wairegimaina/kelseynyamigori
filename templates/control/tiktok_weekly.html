@@ -11,19 +11,25 @@
 }
 .tw-note { font-size:13px; color:var(--ink-faint); margin:10px 0 24px; }
 .tw-section { margin-bottom:28px; }
-.tw-section-title { font-weight:700; font-size:16px; margin-bottom:12px; }
 
 .delta { font-weight:700; font-size:12.5px; white-space:nowrap; }
 .delta-up   { color:#166534; }
 .delta-down { color:#9d174d; }
 .delta-flat { color:var(--ink-faint); }
 
-.tw-week-block { margin-top:14px; }
-.tw-week-block summary { cursor:pointer; font-weight:600; font-size:13.5px; color:var(--ink-soft); padding:6px 0; }
+.tw-campaign { margin-top:26px; }
+.tw-campaign-head {
+  display:flex; align-items:baseline; justify-content:space-between;
+  border-bottom:2px solid var(--pink); padding-bottom:8px; margin-bottom:14px;
+}
+.tw-campaign-head h3 { margin:0; font-size:17px; }
+.tw-campaign-head .brand { color:var(--ink-faint); font-size:13px; font-weight:600; }
+.tw-subhead { font-weight:700; font-size:13px; color:var(--ink-soft); margin:14px 0 8px; text-transform:uppercase; letter-spacing:.03em; }
+.tw-est { color:var(--ink-faint); }
 
 @media (max-width:640px){
   .tw-month-nav { flex-direction:column; align-items:stretch; }
-  .tw-month-nav .btn-primary, .tw-month-nav .btn-ghost { text-align:center; }
+  .tw-campaign-head { flex-direction:column; gap:2px; }
 }
 </style>
 {% endblock %}
@@ -36,7 +42,7 @@
 {% endif %}
 
 <div class="page-header">
-  <p class="page-subtitle">Week-by-week progress across all campaigns · TikTok only, since it's the platform with auto-fetched stats.</p>
+  <p class="page-subtitle">Week-by-week progress per campaign · TikTok only, since it's the platform with auto-fetched stats.</p>
 
   <div class="tw-month-nav">
     <a class="btn-ghost" href="?month={{ prev_month_param }}">&larr; Prev</a>
@@ -59,7 +65,13 @@
 
 <h2>{{ month_label }}</h2>
 
-<!-- ── Month totals ── -->
+{% if estimated_count %}
+<ul class="messages tw-section">
+  <li class="error">{{ estimated_count }} post(s) below have no posting date set — the date shown is when the post was logged, not necessarily when it went live. These are marked with *.</li>
+</ul>
+{% endif %}
+
+<!-- ── Month totals (all campaigns) ── -->
 <div class="stats-grid tw-section">
   <div class="stat-card">
     <div class="stat-number">{{ totals.count }}</div>
@@ -77,21 +89,11 @@
     <div class="stat-number">{{ totals.comments|default:0 }}</div>
     <div class="stat-label">Comments</div>
   </div>
-  <div class="stat-card">
-    <div class="stat-number">{{ totals.engagement_rate }}%</div>
-    <div class="stat-label">Engagement Rate</div>
-  </div>
 </div>
 
-{% if undated_count %}
-<ul class="messages tw-section">
-  <li class="error">{{ undated_count }} TikTok post(s) have no posting date set, so they can't be placed into a week and are excluded from every weekly report. Add a posting date on those posts to include them.</li>
-</ul>
-{% endif %}
-
-<!-- ── Week-by-week table ── -->
+<!-- ── Overall week-by-week (all campaigns combined) ── -->
 <div class="card tw-section">
-  <div class="card-title">Week-by-Week Progress</div>
+  <div class="card-title">Overall Week-by-Week (All Campaigns)</div>
   <div class="table-wrap">
     <table>
       <thead>
@@ -105,7 +107,6 @@
           <th>Δ</th>
           <th>Comments</th>
           <th>Δ</th>
-          <th>Eng. Rate</th>
         </tr>
       </thead>
       <tbody>
@@ -116,38 +117,25 @@
           <td>{{ w.count }}</td>
           <td>{{ w.views }}</td>
           <td>
-            {% if w.deltas.views is None %}
-              <span class="delta delta-flat">—</span>
-            {% elif w.deltas.views >= 0 %}
-              <span class="delta delta-up">▲ {{ w.deltas.views }}%</span>
-            {% else %}
-              <span class="delta delta-down">▼ {{ w.deltas.views }}%</span>
-            {% endif %}
+            {% if w.deltas.views is None %}<span class="delta delta-flat">—</span>
+            {% elif w.deltas.views >= 0 %}<span class="delta delta-up">▲ {{ w.deltas.views }}%</span>
+            {% else %}<span class="delta delta-down">▼ {{ w.deltas.views }}%</span>{% endif %}
           </td>
           <td>{{ w.likes }}</td>
           <td>
-            {% if w.deltas.likes is None %}
-              <span class="delta delta-flat">—</span>
-            {% elif w.deltas.likes >= 0 %}
-              <span class="delta delta-up">▲ {{ w.deltas.likes }}%</span>
-            {% else %}
-              <span class="delta delta-down">▼ {{ w.deltas.likes }}%</span>
-            {% endif %}
+            {% if w.deltas.likes is None %}<span class="delta delta-flat">—</span>
+            {% elif w.deltas.likes >= 0 %}<span class="delta delta-up">▲ {{ w.deltas.likes }}%</span>
+            {% else %}<span class="delta delta-down">▼ {{ w.deltas.likes }}%</span>{% endif %}
           </td>
           <td>{{ w.comments }}</td>
           <td>
-            {% if w.deltas.comments is None %}
-              <span class="delta delta-flat">—</span>
-            {% elif w.deltas.comments >= 0 %}
-              <span class="delta delta-up">▲ {{ w.deltas.comments }}%</span>
-            {% else %}
-              <span class="delta delta-down">▼ {{ w.deltas.comments }}%</span>
-            {% endif %}
+            {% if w.deltas.comments is None %}<span class="delta delta-flat">—</span>
+            {% elif w.deltas.comments >= 0 %}<span class="delta delta-up">▲ {{ w.deltas.comments }}%</span>
+            {% else %}<span class="delta delta-down">▼ {{ w.deltas.comments }}%</span>{% endif %}
           </td>
-          <td>{{ w.engagement_rate }}%</td>
         </tr>
         {% empty %}
-        <tr><td colspan="10">No TikTok posts logged for {{ month_label }}.</td></tr>
+        <tr><td colspan="9">No TikTok posts logged for {{ month_label }}.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -155,71 +143,105 @@
   <p class="tw-note">Δ = change vs. the previous week in this month. Week 1 has no baseline.</p>
 </div>
 
-<!-- ── Per-week post detail ── -->
-{% for w in weeks %}
-  {% if w.posts %}
-  <details class="card tw-week-block">
-    <summary>Week {{ w.week_num }} posts ({{ w.start|date:"d M" }} – {{ w.end|date:"d M" }}) — {{ w.posts|length }} post{{ w.posts|length|pluralize }}</summary>
-    <div class="table-wrap" style="margin-top:12px;">
+<!-- ── Per-campaign sections ── -->
+{% for sec in campaign_sections %}
+<div class="tw-campaign">
+  <div class="tw-campaign-head">
+    <h3>{{ sec.campaign.campaign_name|default:"(deleted campaign)" }}</h3>
+    <span class="brand">{{ sec.campaign.brand.name|default:"No Brand" }}</span>
+  </div>
+
+  <div class="stats-grid" style="margin-bottom:14px;">
+    <div class="stat-card">
+      <div class="stat-number">{{ sec.totals.count }}</div>
+      <div class="stat-label">Posts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ sec.totals.views|default:0 }}</div>
+      <div class="stat-label">Views</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ sec.totals.likes|default:0 }}</div>
+      <div class="stat-label">Likes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ sec.totals.comments|default:0 }}</div>
+      <div class="stat-label">Comments</div>
+    </div>
+  </div>
+
+  <div class="tw-subhead">Week-by-Week</div>
+  <div class="card" style="margin-bottom:16px;">
+    <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Campaign</th>
-            <th>Date</th>
-            <th>Views</th>
-            <th>Likes</th>
-            <th>Comments</th>
-            <th>Link</th>
+            <th>Week</th><th>Dates</th><th>Posts</th>
+            <th>Views</th><th>Δ</th><th>Likes</th><th>Δ</th><th>Comments</th><th>Δ</th>
           </tr>
         </thead>
         <tbody>
-          {% for p in w.posts %}
+          {% for w in sec.weeks %}
           <tr>
-            <td>{{ p.campaign.campaign_name|default:"—" }}</td>
-            <td>{{ p.posting_date|date:"d M Y" }}</td>
-            <td>{{ p.views }}</td>
-            <td>{{ p.likes }}</td>
-            <td>{{ p.comments }}</td>
-            <td>{% if p.post_url %}<a href="{{ p.post_url }}" target="_blank" rel="noopener">View post</a>{% else %}—{% endif %}</td>
+            <td>Week {{ w.week_num }}</td>
+            <td>{{ w.start|date:"d M" }} – {{ w.end|date:"d M" }}</td>
+            <td>{{ w.count }}</td>
+            <td>{{ w.views }}</td>
+            <td>
+              {% if w.deltas.views is None %}<span class="delta delta-flat">—</span>
+              {% elif w.deltas.views >= 0 %}<span class="delta delta-up">▲ {{ w.deltas.views }}%</span>
+              {% else %}<span class="delta delta-down">▼ {{ w.deltas.views }}%</span>{% endif %}
+            </td>
+            <td>{{ w.likes }}</td>
+            <td>
+              {% if w.deltas.likes is None %}<span class="delta delta-flat">—</span>
+              {% elif w.deltas.likes >= 0 %}<span class="delta delta-up">▲ {{ w.deltas.likes }}%</span>
+              {% else %}<span class="delta delta-down">▼ {{ w.deltas.likes }}%</span>{% endif %}
+            </td>
+            <td>{{ w.comments }}</td>
+            <td>
+              {% if w.deltas.comments is None %}<span class="delta delta-flat">—</span>
+              {% elif w.deltas.comments >= 0 %}<span class="delta delta-up">▲ {{ w.deltas.comments }}%</span>
+              {% else %}<span class="delta delta-down">▼ {{ w.deltas.comments }}%</span>{% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-  </details>
-  {% endif %}
-{% endfor %}
+  </div>
 
-<!-- ── Per-campaign breakdown ── -->
-{% if campaign_breakdown %}
-<div class="card tw-section" style="margin-top:20px;">
-  <div class="card-title">By Campaign ({{ month_label }})</div>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Campaign</th>
-          <th>Brand</th>
-          <th>Posts</th>
-          <th>Views</th>
-          <th>Likes</th>
-          <th>Comments</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for c in campaign_breakdown %}
-        <tr>
-          <td>{{ c.campaign.campaign_name|default:"(deleted campaign)" }}</td>
-          <td>{{ c.campaign.brand.name|default:"—" }}</td>
-          <td>{{ c.count }}</td>
-          <td>{{ c.views }}</td>
-          <td>{{ c.likes }}</td>
-          <td>{{ c.comments }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="tw-subhead">Posts</div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Date</th><th>Views</th><th>Likes</th><th>Comments</th><th>Post URL</th></tr>
+        </thead>
+        <tbody>
+          {% for p in sec.posts %}
+          <tr>
+            <td>{{ p.effective_date|date:"d M Y" }}{% if p.date_is_estimated %}<span class="tw-est">*</span>{% endif %}</td>
+            <td>{{ p.views }}</td>
+            <td>{{ p.likes }}</td>
+            <td>{{ p.comments }}</td>
+            <td>{% if p.post_url %}<a href="{{ p.post_url }}" target="_blank" rel="noopener">{{ p.post_url|truncatechars:40 }}</a>{% else %}—{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5">No posts this month.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
+{% empty %}
+<div class="card tw-section">
+  <p>No TikTok posts found for {{ month_label }}.</p>
+</div>
+{% endfor %}
+
+{% if estimated_count %}
+<p class="tw-note">* Date estimated from when the post was logged (no posting date was set on it).</p>
 {% endif %}
 {% endblock %}
