@@ -56,4 +56,6 @@ urlpatterns = [
     path("campaigns/tiktok-weekly/", views.tiktok_weekly_report, name="tiktok_weekly_report"),
     path("campaigns/tiktok-weekly/pdf/", views.tiktok_weekly_report_pdf, name="tiktok_weekly_report_pdf"),
     path("campaigns/tiktok-weekly/refresh/", views.tiktok_weekly_refresh_stats, name="tiktok_weekly_refresh_stats"),
+    path("campaigns/tiktok-weekly/archive/", views.tiktok_weekly_archive, name="tiktok_weekly_archive"),
+    path("campaigns/tiktok-weekly/archive/generate/", views.tiktok_weekly_generate_snapshot, name="tiktok_weekly_generate_snapshot"),
 ]

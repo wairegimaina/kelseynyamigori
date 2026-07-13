@@ -450,3 +450,27 @@ class CampaignChecklist(models.Model):
 
     def __str__(self):
         return self.item
+
+
+class TikTokWeeklyReportSnapshot(models.Model):
+    """
+    An archived copy of the TikTok Weekly Report PDF, generated on a
+    schedule (e.g. every Saturday via `manage.py generate_tiktok_weekly_report`)
+    so historical progress is preserved even as view/like counts keep
+    climbing on the live report.
+    """
+    year = models.PositiveSmallIntegerField()
+    month = models.PositiveSmallIntegerField()
+    snapshot_date = models.DateField(help_text="The date this snapshot was generated on.")
+    pdf_file = models.FileField(upload_to="tiktok_reports/", storage=MediaCloudinaryStorage())
+    posts_count = models.PositiveIntegerField(default=0)
+    views_total = models.PositiveIntegerField(default=0)
+    likes_total = models.PositiveIntegerField(default=0)
+    comments_total = models.PositiveIntegerField(default=0)
+    generated_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-snapshot_date"]
+
+    def __str__(self):
+        return f"TikTok Weekly Report — {self.snapshot_date.strftime('%d %b %Y')}"

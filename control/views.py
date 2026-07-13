@@ -1430,9 +1430,12 @@ def tiktok_weekly_report(request):
     })
 
 
-@login_required
-def tiktok_weekly_report_pdf(request):
-    """Same data as tiktok_weekly_report, rendered as a downloadable PDF, per campaign."""
+def _build_tiktok_weekly_pdf(year, month):
+    """
+    Builds the TikTok Weekly Report PDF and returns the raw bytes.
+    Shared by the download view and the scheduled archive command, so both
+    always produce an identical PDF.
+    """
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
     from reportlab.lib.units import mm
@@ -1444,7 +1447,6 @@ def tiktok_weekly_report_pdf(request):
     from urllib.parse import urlparse as _up
     import io
 
-    year, month = _parse_month_param(request)
     data = _tiktok_weekly_data(year, month)
 
     from core.models import SiteProfile
@@ -1685,6 +1687,86 @@ def tiktok_weekly_report_pdf(request):
 
     doc.build(story)
     buffer.seek(0)
-    response = HttpResponse(buffer, content_type="application/pdf")
+    return buffer.getvalue(), data
+
+
+@login_required
+def tiktok_weekly_report_pdf(request):
+    """Same data as tiktok_weekly_report, rendered as a downloadable PDF, per campaign."""
+    year, month = _parse_month_param(request)
+    pdf_bytes, data = _build_tiktok_weekly_pdf(year, month)
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="tiktok_weekly_{year:04d}-{month:02d}.pdf"'
     return response
+
+
+def save_tiktok_weekly_snapshot(year, month, snapshot_date=None):
+    """
+    Builds the TikTok Weekly Report PDF for (year, month) and archives it as
+    a TikTokWeeklyReportSnapshot row (PDF stored via Cloudinary, so it
+    survives redeploys). Used by the `generate_tiktok_weekly_report`
+    management command — run it on a schedule (e.g. every Saturday) to
+    build up a real historical record, since view/like counts on the live
+    report keep changing as TikTok stats get refreshed.
+    """
+    from core.models import TikTokWeeklyReportSnapshot
+    from django.core.files.base import ContentFile
+
+    snapshot_date = snapshot_date or date.today()
+    pdf_bytes, data = _build_tiktok_weekly_pdf(year, month)
+    t = data["totals"]
+
+    snapshot = TikTokWeeklyReportSnapshot(
+        year=year,
+        month=month,
+        snapshot_date=snapshot_date,
+        posts_count=t["count"],
+        views_total=t["views"],
+        likes_total=t["likes"],
+        comments_total=t["comments"],
+    )
+    filename = f"tiktok_weekly_{year:04d}-{month:02d}_{snapshot_date.isoformat()}.pdf"
+    snapshot.pdf_file.save(filename, ContentFile(pdf_bytes), save=True)
+    return snapshot
+
+
+@login_required
+def tiktok_weekly_archive(request):
+    """List of archived weekly-report snapshots, newest first."""
+    from core.models import TikTokWeeklyReportSnapshot
+    snapshots = TikTokWeeklyReportSnapshot.objects.all()
+    return render(request, "control/tiktok_weekly_archive.html", {"snapshots": snapshots})
+
+
+@login_required
+@require_POST
+def tiktok_weekly_generate_snapshot(request):
+    """
+    Manual 'Generate Snapshot Now' button — builds and archives a snapshot
+    for the requested month (defaults to the current month) on demand, as
+    a free alternative to a scheduled Render Cron Job.
+    """
+    month_param = request.POST.get("month", "").strip()
+    today = date.today()
+    if month_param:
+        try:
+            year_s, month_s = month_param.split("-")
+            year, month = int(year_s), int(month_s)
+        except (ValueError, AttributeError):
+            year, month = today.year, today.month
+    else:
+        year, month = today.year, today.month
+
+    try:
+        snapshot = save_tiktok_weekly_snapshot(year, month, snapshot_date=today)
+        messages.success(
+            request,
+            f"Snapshot saved for {today.strftime('%d %b %Y')} — "
+            f"{snapshot.posts_count} posts, {snapshot.views_total:,} views, "
+            f"{snapshot.likes_total:,} likes, {snapshot.comments_total:,} comments."
+        )
+    except Exception as e:
+        messages.error(request, f"Couldn't generate the snapshot: {e}")
+
+    from django.urls import reverse
+    return redirect(reverse("control:tiktok_weekly_archive"))

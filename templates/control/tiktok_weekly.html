@@ -59,6 +59,7 @@
       <input type="hidden" name="month" value="{{ selected_month_param }}">
       <button type="submit" class="btn-ghost">↻ Refresh TikTok Stats</button>
     </form>
+    <a class="btn-ghost" href="{% url 'control:tiktok_weekly_archive' %}">🗂 View Archive</a>
   </div>
   <p class="tw-note">Numbers reflect stats as of the last fetch. Click "Refresh TikTok Stats" to pull the latest views/likes/comments from TikTok before viewing or downloading.</p>
 </div>

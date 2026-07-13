@@ -1,0 +1,58 @@
+{% extends 'control/base.html' %}
+{% block title %}TikTok Report Archive - Control Panel{% endblock %}
+{% block page_title %}TikTok Report Archive{% endblock %}
+
+{% block content %}
+{% if messages %}
+<ul class="messages">
+  {% for msg in messages %}<li class="{{ msg.tags }}">{{ msg }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+<div class="page-header">
+  <p class="page-subtitle">Saved snapshots of the TikTok Weekly Report, one per generation run — a real historical record, since the live report's numbers keep changing as stats get refreshed.</p>
+  <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
+    <a class="btn-ghost" href="{% url 'control:tiktok_weekly_report' %}">&larr; Back to Weekly Report</a>
+    <form method="post" action="{% url 'control:tiktok_weekly_generate_snapshot' %}" style="display:inline-block;">
+      {% csrf_token %}
+      <button type="submit" class="btn-primary">📸 Generate Snapshot Now</button>
+    </form>
+  </div>
+  <p class="tw-note" style="margin-top:10px; font-size:13px; color:var(--ink-faint);">
+    Click this any time (e.g. every Saturday) to save a dated copy of this month's report. No scheduling setup needed.
+  </p>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Snapshot Date</th>
+          <th>Month Covered</th>
+          <th>Posts</th>
+          <th>Views</th>
+          <th>Likes</th>
+          <th>Comments</th>
+          <th>PDF</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in snapshots %}
+        <tr>
+          <td>{{ s.snapshot_date|date:"d M Y" }}</td>
+          <td>{{ s.month }}/{{ s.year }}</td>
+          <td>{{ s.posts_count }}</td>
+          <td>{{ s.views_total }}</td>
+          <td>{{ s.likes_total }}</td>
+          <td>{{ s.comments_total }}</td>
+          <td><a href="{{ s.pdf_file.url }}" target="_blank" rel="noopener">Download</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7">No snapshots saved yet. Run <code>python manage.py generate_tiktok_weekly_report</code> to create the first one, or schedule it to run every Saturday.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
