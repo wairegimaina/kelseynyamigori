@@ -82,6 +82,9 @@ DATABASES = {
         "PASSWORD": _parsed.password,
         "HOST": _parsed.hostname,
         "PORT": str(_parsed.port or 5432),
+        # Reuse a DB connection for up to 10 min instead of opening a new one
+        # on every request. Fewer wake-ups = less Neon compute burned.
+        "CONN_MAX_AGE": 600,
         "OPTIONS": {
             "sslmode": _qs.get("sslmode", ["require"])[0],
             "channel_binding": _qs.get("channel_binding", ["require"])[0],
